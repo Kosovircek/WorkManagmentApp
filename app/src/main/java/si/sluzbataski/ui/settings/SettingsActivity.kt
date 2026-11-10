@@ -130,7 +130,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
         if (uri != null) scope.launch {
             try {
                 val r = vm.g.exporter.export(uri)
-                Toast.makeText(context, "Izvoženo v mapo ${r.folderName} (${r.rows} vrstic)", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Izvoženo v mapo ${r.folderName} (${r.rows} vrstic, ${r.photos} slik)", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(context, "Izvoz ni uspel: ${e.message}", Toast.LENGTH_LONG).show()
             }
@@ -176,7 +176,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             // ================= Izvoz
             Text("Izvoz podatkov", style = MaterialTheme.typography.titleMedium)
             Text("Izvozi vse (vsa delovna mesta, odprte, opravljene in izbrisane taske, zgodovino sprememb in nakupe) " +
-                "v CSV datoteke, ki jih odpreš v Excelu ali Google Sheets.", style = MaterialTheme.typography.bodySmall)
+                "v CSV datoteke, ki jih odpreš v Excelu ali Google Sheets. Slike taskov se kopirajo v podmapo slike/.", style = MaterialTheme.typography.bodySmall)
             Button(onClick = { exportLauncher.launch(null) }) { Text("Izvozi v CSV …") }
         }
     }

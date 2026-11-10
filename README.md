@@ -17,7 +17,7 @@ Napisano v **Kotlinu** (Jetpack Compose, Room, Glance), vsa koda je podrobno kom
 | **Nakupi** | seznam po delovnih mestih, opcijska količina in trgovina, filter po trgovini, zgodovina kupljenega |
 | **Statistika** | prejeti/opravljeni, povprečni in mediani čas izvedbe, zamujeni, grafi skozi čas, po nujnosti, naročnikih, dnevih v tednu, trgovinah |
 | **Arhiv** | vsi opravljeni in izbrisani taski z iskanjem; vse je mogoče ponovno odpreti ali obnoviti |
-| **Nastavitve** | gumba za postavitev widgetov na domači zaslon, delovna mesta (dodaj, preimenuj, barva, arhiviraj), izbira koledarja, **izvoz vseh podatkov v CSV** |
+| **Nastavitve** | gumba za postavitev widgetov na domači zaslon, delovna mesta (dodaj, preimenuj, barva, arhiviraj), izbira koledarja, **izvoz vseh podatkov v CSV** (s slikami v podmapi `slike/`) |
 
 Nič se nikoli ne izbriše iz baze: opravljeni taski, izbrisani taski, kupljene stvari in vsaka
 sprememba ostanejo shranjeni s časi (ustvarjeno, spremenjeno, opravljeno, izbrisano).

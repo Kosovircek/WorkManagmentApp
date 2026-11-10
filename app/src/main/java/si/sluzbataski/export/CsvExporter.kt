@@ -20,6 +20,7 @@ import java.util.Locale
  *   - taski.csv           (vsi taski: odprti, opravljeni in izbrisani)
  *   - zgodovina_taskov.csv (vsaka sprememba vsakega taska)
  *   - nakupi.csv          (vse postavke, tudi kupljene in izbrisane)
+ *   - slike/task_<id>.jpg (kopije vseh slik taskov; ime je v stolpcu "slika" v taski.csv)
  *
  * Format: ločilo ";" in UTF-8 z BOM – tako jih Excel v slovenskih nastavitvah odpre
  * pravilno (s šumniki in v ločenih stolpcih).
@@ -27,7 +28,7 @@ import java.util.Locale
 class CsvExporter(private val context: Context, private val db: AppDatabase) {
 
     /** Rezultat izvoza za prikaz uporabniku. */
-    data class Result(val folderName: String, val rows: Int)
+    data class Result(val folderName: String, val rows: Int, val photos: Int = 0)
 
     suspend fun export(treeUri: Uri): Result = withContext(Dispatchers.IO) {
         val root = DocumentFile.fromTreeUri(context, treeUri) ?: error("Mape ni mogoče odpreti")
@@ -44,11 +45,15 @@ class CsvExporter(private val context: Context, private val db: AppDatabase) {
             listOf("id", "ime", "ustvarjeno", "arhivirano"),
             workplaces.map { listOf(it.id, it.name, Format.iso(it.createdAt), Format.iso(it.archivedAt)) })
 
+        // --- slike: kopiramo jih v podmapo "slike", vsaka dobi ime task_<id>.jpg
+        val tasks = db.taskDao().getAll()
+        val photoNames = exportPhotos(folder, tasks)
+
         // --- taski
         rows += write(folder, "taski.csv",
-            listOf("id", "delovno_mesto", "opis", "nujnost", "rok", "rok_z_uro", "narocnik", "ima_sliko",
+            listOf("id", "delovno_mesto", "opis", "nujnost", "rok", "rok_z_uro", "narocnik", "slika",
                 "ustvarjen", "posodobljen", "opravljen", "izbrisan", "status", "trajanje_ur", "koledar_dogodek_id"),
-            db.taskDao().getAll().map { t ->
+            tasks.map { t ->
                 val status = when {
                     t.deletedAt != null -> "izbrisan"
                     t.completedAt != null -> "opravljen"
@@ -57,7 +62,7 @@ class CsvExporter(private val context: Context, private val db: AppDatabase) {
                 val hours = t.completedAt?.let { "%.2f".format(Locale("sl"), (it - t.createdAt) / 3_600_000.0) } ?: ""
                 listOf(t.id, wpName[t.workplaceId] ?: t.workplaceId, t.description, t.urgency.label,
                     Format.iso(t.dueAt), if (t.dueHasTime) "da" else "ne", t.client ?: "",
-                    if (t.photoPath != null) "da" else "ne",
+                    photoNames[t.id]?.let { "slike/$it" } ?: "",
                     Format.iso(t.createdAt), Format.iso(t.updatedAt), Format.iso(t.completedAt),
                     Format.iso(t.deletedAt), status, hours, t.calendarEventId ?: "")
             })
@@ -77,7 +82,28 @@ class CsvExporter(private val context: Context, private val db: AppDatabase) {
                     Format.iso(it.createdAt), Format.iso(it.boughtAt), Format.iso(it.deletedAt))
             })
 
-        Result(folderName, rows)
+        Result(folderName, rows, photoNames.size)
+    }
+
+    /**
+     * Kopira slike taskov v podmapo "slike". Vrne preslikavo id taska -> ime datoteke.
+     * Taski brez slike ali z manjkajočo datoteko so izpuščeni.
+     */
+    private fun exportPhotos(folder: DocumentFile, tasks: List<si.sluzbataski.data.entity.Task>): Map<Long, String> {
+        val withPhoto = tasks.filter { t -> t.photoPath?.let { java.io.File(it).exists() } == true }
+        if (withPhoto.isEmpty()) return emptyMap()
+        val dir = folder.createDirectory("slike") ?: return emptyMap()
+        val result = mutableMapOf<Long, String>()
+        for (t in withPhoto) {
+            val name = "task_${t.id}.jpg"
+            val file = dir.createFile("image/jpeg", name) ?: continue
+            context.contentResolver.openOutputStream(file.uri)?.use { out ->
+                java.io.File(t.photoPath!!).inputStream().use { it.copyTo(out) }
+            } ?: continue
+            // nekateri ponudniki (npr. Google Drive) lahko ime spremenijo – shranimo dejansko ime
+            result[t.id] = file.name ?: name
+        }
+        return result
     }
 
     /** Zapiše eno CSV datoteko; vrne število podatkovnih vrstic. */
