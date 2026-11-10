@@ -75,13 +75,17 @@ import si.sluzbataski.data.entity.Workplace
 import si.sluzbataski.ui.components.CALENDAR_PERMISSIONS
 import si.sluzbataski.ui.components.ColorDot
 import si.sluzbataski.ui.theme.SluzbaTaskiTheme
+import si.sluzbataski.widget.QuickAddWidgetReceiver
+import si.sluzbataski.widget.TaskListWidgetReceiver
 import si.sluzbataski.widget.WidgetUpdater
+import si.sluzbataski.widget.requestPinWidget
 
 /**
  * NASTAVITVE:
  *  1. Delovna mesta – dodaj, preimenuj, barva, arhiviraj/obnovi
- *  2. Google koledar – vklop, dovoljenje, izbira koledarja
- *  3. Izvoz baze v CSV
+ *  2. Widgeti – postavitev na domači zaslon z enim klikom
+ *  3. Google koledar – vklop, dovoljenje, izbira koledarja
+ *  4. Izvoz baze v CSV
  */
 class SettingsActivity : ComponentActivity() {
     private val vm: SettingsViewModel by viewModels()
@@ -163,6 +167,9 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             HorizontalDivider()
+            WidgetSection()
+
+            HorizontalDivider()
             CalendarSection(vm.g.calendar, vm.g)
 
             HorizontalDivider()
@@ -178,6 +185,29 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     editing?.let { w ->
         WorkplaceDialog(w, onDismiss = { editing = null }) { name, color -> vm.save(w.copy(name = name, colorArgb = color)); editing = null }
     }
+}
+
+/**
+ * Razdelek "Widgeti": gumba, ki widget postavita na domači zaslon (brez iskanja
+ * v seznamu pripomočkov, kar je na nekaterih telefonih težko).
+ */
+@Composable
+private fun WidgetSection() {
+    val context = LocalContext.current
+    fun pin(receiver: Class<*>) {
+        if (!requestPinWidget(context, receiver)) {
+            Toast.makeText(context, "Zaganjalnik tega ne podpira. Dolgo pritisni na domači zaslon → Pripomočki → Službeni taski.",
+                Toast.LENGTH_LONG).show()
+        }
+    }
+    Text("Widgeti na domačem zaslonu", style = MaterialTheme.typography.titleMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { pin(QuickAddWidgetReceiver::class.java) }) { Text("+ Hitri vnos") }
+        OutlinedButton(onClick = { pin(TaskListWidgetReceiver::class.java) }) { Text("+ Seznam taskov") }
+    }
+    Text("Telefon te bo vprašal za potrditev. Na Xiaomi telefonih po potrebi v nastavitvah aplikacije " +
+        "(Dovoljenja → Druga dovoljenja) vklopi \"Bližnjice na začetnem zaslonu\".",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** Razdelek za Google koledar. */

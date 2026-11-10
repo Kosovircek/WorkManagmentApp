@@ -17,7 +17,7 @@ Napisano v **Kotlinu** (Jetpack Compose, Room, Glance), vsa koda je podrobno kom
 | **Nakupi** | seznam po delovnih mestih, opcijska količina in trgovina, filter po trgovini, zgodovina kupljenega |
 | **Statistika** | prejeti/opravljeni, povprečni in mediani čas izvedbe, zamujeni, grafi skozi čas, po nujnosti, naročnikih, dnevih v tednu, trgovinah |
 | **Arhiv** | vsi opravljeni in izbrisani taski z iskanjem; vse je mogoče ponovno odpreti ali obnoviti |
-| **Nastavitve** | delovna mesta (dodaj, preimenuj, barva, arhiviraj), izbira koledarja, **izvoz vseh podatkov v CSV** |
+| **Nastavitve** | gumba za postavitev widgetov na domači zaslon, delovna mesta (dodaj, preimenuj, barva, arhiviraj), izbira koledarja, **izvoz vseh podatkov v CSV** |
 
 Nič se nikoli ne izbriše iz baze: opravljeni taski, izbrisani taski, kupljene stvari in vsaka
 sprememba ostanejo shranjeni s časi (ustvarjeno, spremenjeno, opravljeno, izbrisano).
@@ -38,7 +38,7 @@ Iz ukazne vrstice: `./gradlew assembleDebug` (potrebuješ JDK 17 in Android SDK 
    V aplikaciji *Nastavitve → Google koledar* dovoli dostop; prikaže se "✓ Ciljni koledar: SluzbaTaski".
    (Namesto tega lahko izbereš katerikoli drug koledar.)
 2. **Delovna mesta:** ob prvem zagonu obstaja "Služba". V *Nastavitvah* ga preimenuj in dodaj ostala.
-3. **Widgeta:** dolg pritisk na domači zaslon → *Pripomočki* → "Službeni taski" → povleci *Hitri vnos taska* in *Seznam taskov*.
+3. **Widgeta:** v aplikaciji *Meni → Dodaj widget na domači zaslon* in pritisni *+ Hitri vnos* / *+ Seznam taskov*. Ali ročno: dolg pritisk na domači zaslon → *Pripomočki* → "Službeni taski" (na Xiaomiju se pomakni navzdol pod sistemske pripomočke).
 
 ## Dokumentacija
 

@@ -64,3 +64,16 @@ fun mainIntent(context: Context): Intent =
         data = Uri.parse("sluzbataski://main")
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
+
+/**
+ * Zaprosi zaganjalnik (launcher), da widget postavi na domači zaslon.
+ * To je zanesljivejše od iskanja v seznamu pripomočkov (npr. na Xiaomi/MIUI).
+ * Uporabnik mora postavitev le potrditi v sistemskem oknu.
+ *
+ * @return false, če zaganjalnik tega ne podpira (takrat je treba widget dodati ročno)
+ */
+fun requestPinWidget(context: Context, receiver: Class<*>): Boolean {
+    val manager = android.appwidget.AppWidgetManager.getInstance(context)
+    if (!manager.isRequestPinAppWidgetSupported) return false
+    return manager.requestPinAppWidget(android.content.ComponentName(context, receiver), null, null)
+}
