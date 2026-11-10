@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Službeni taski</string>
+    <string name="widget_quick_add_name">Hitri vnos taska</string>
+    <string name="widget_quick_add_desc">Hitro dodaj task z izbrano nujnostjo ali sliko</string>
+    <string name="widget_task_list_name">Seznam taskov</string>
+    <string name="widget_task_list_desc">Odprti taski, razvrščeni po nujnosti in datumu</string>
+</resources>

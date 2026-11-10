@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AndroidManifest.xml – "osebna izkaznica" aplikacije.
+  Tu so našteta dovoljenja, vse aktivnosti (zasloni), widgeti in FileProvider za kamero.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Branje/pisanje koledarja: za vpis taskov z datumom v Google koledar "SluzbaTaski" -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+
+    <!-- Kamera ni obvezna (aplikacija dela tudi na napravah brez nje) -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Na Android 11+ moramo najaviti, da bomo klicali kamero in prepoznavanje govora -->
+    <queries>
+        <intent><action android:name="android.media.action.IMAGE_CAPTURE" /></intent>
+        <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
+    </queries>
+
+    <application
+        android:name=".SluzbaTaskiApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SluzbaTaski"
+        tools:targetApi="34">
+
+        <!-- Glavni zaslon (seznam taskov) – zažene se z ikone -->
+        <activity android:name=".ui.main.MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".ui.add.AddTaskActivity" android:windowSoftInputMode="adjustResize" />
+
+        <!-- Okno hitrega vnosa iz widgeta: prosojno, ločeno od glavne naloge, ne v nedavnih -->
+        <activity
+            android:name=".ui.add.QuickAddActivity"
+            android:theme="@style/Theme.SluzbaTaski.QuickAdd"
+            android:taskAffinity="si.sluzbataski.quickadd"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize|stateVisible"
+            android:exported="false" />
+
+        <activity android:name=".ui.detail.TaskDetailActivity" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ui.archive.ArchiveActivity" />
+        <activity android:name=".ui.shopping.ShoppingActivity" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ui.stats.StatsActivity" />
+        <activity android:name=".ui.settings.SettingsActivity" />
+
+        <!-- Widget: hitri vnos -->
+        <receiver android:name=".widget.QuickAddWidgetReceiver" android:exported="true"
+            android:label="@string/widget_quick_add_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_add_widget_info" />
+        </receiver>
+
+        <!-- Widget: seznam taskov -->
+        <receiver android:name=".widget.TaskListWidgetReceiver" android:exported="true"
+            android:label="@string/widget_task_list_name">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/task_list_widget_info" />
+        </receiver>
+
+        <!-- Omogoča kameri, da zapiše sliko v notranjo mapo aplikacije -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

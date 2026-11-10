@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mape, ki jih FileProvider sme deliti s kamero: samo files/photos -->
+<paths>
+    <files-path name="photos" path="photos/" />
+</paths>
