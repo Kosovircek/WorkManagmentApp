@@ -10,7 +10,6 @@ import kotlinx.coroutines.launch
 import si.sluzbataski.AppGraph
 import si.sluzbataski.data.entity.Workplace
 import si.sluzbataski.ui.components.TaskFormState
-import si.sluzbataski.widget.WidgetUpdater
 
 /**
  * Skupni ViewModel za oba načina dodajanja: polni zaslon [AddTaskActivity]
@@ -27,8 +26,7 @@ class AddTaskViewModel(app: Application) : AndroidViewModel(app) {
         g.tasks.observeClients().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun switchTo(w: Workplace) {
-        g.workplaces.switchTo(w.id)
-        viewModelScope.launch { WidgetUpdater.updateAll(getApplication()) }
+        g.workplaces.switchTo(w.id) // repozitorij sam osveži widgete
     }
 
     /**

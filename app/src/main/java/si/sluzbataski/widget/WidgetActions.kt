@@ -23,11 +23,14 @@ import si.sluzbataski.ui.main.MainActivity
  *   odprli isto stvar.
  */
 
-/** Klik na ime delovnega mesta na widgetu: preklopi na naslednje mesto. */
+/**
+ * Klik na ime delovnega mesta na widgetu: preklopi na naslednje mesto.
+ * Preklop velja povsod (aplikacija, oba widgeta), ker je shranjen v SettingsStore.
+ */
 class SwitchWorkplaceAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        // cycleNext() shrani novo aktivno mesto in sam osveži vse widgete
         AppGraph.get(context).workplaces.cycleNext()
-        WidgetUpdater.updateAll(context)
     }
 }
 
@@ -56,6 +59,12 @@ fun taskDetailIntent(context: Context, taskId: Long): Intent =
     Intent(context, TaskDetailActivity::class.java).apply {
         data = Uri.parse("sluzbataski://task/$taskId")
         putExtra(TaskDetailActivity.EXTRA_TASK_ID, taskId)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+fun settingsIntent(context: Context): Intent =
+    Intent(context, si.sluzbataski.ui.settings.SettingsActivity::class.java).apply {
+        data = Uri.parse("sluzbataski://settings")
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 

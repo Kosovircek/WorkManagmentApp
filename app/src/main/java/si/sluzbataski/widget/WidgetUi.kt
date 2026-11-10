@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
+import androidx.glance.LocalContext
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.cornerRadius
@@ -44,29 +45,38 @@ fun textStyle(size: Int = 14, color: Color = WidgetColors.text, bold: Boolean = 
 )
 
 /**
- * Glava widgeta: barvna pika + ime delovnega mesta + "⇄".
- * Klik na glavo preklopi na naslednje delovno mesto (če jih je več).
+ * Glava widgeta: barvna pika + ime delovnega mesta + gumb "⇄".
+ *
+ * Klik kamorkoli na ime ali gumb preklopi na naslednje delovno mesto. Preklop velja
+ * povsod (aplikacija in oba widgeta). Če obstaja samo eno delovno mesto, gumb
+ * pokaže "+ mesto" in odpre nastavitve, kjer dodaš novo.
  */
 @Composable
 fun WorkplaceHeader(workplace: Workplace?, canSwitch: Boolean, trailing: @Composable () -> Unit = {}) {
     val color = Color(workplace?.colorArgb ?: 0xFF3949AB)
+    val context = LocalContext.current
+    // Več mest: preklop v ozadju. Eno mesto: odpri nastavitve (dodaj novo mesto).
+    val switch: Action = if (canSwitch) actionRunCallbackSwitch()
+    else androidx.glance.appwidget.action.actionStartActivity(settingsIntent(context))
     Row(
         modifier = GlanceModifier.fillMaxWidth().padding(bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
-            modifier = if (canSwitch) GlanceModifier.clickable(actionRunCallbackSwitch()) else GlanceModifier,
+            modifier = GlanceModifier.defaultWeight().clickable(switch),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(GlanceModifier.size(10.dp).cornerRadius(5.dp).background(color)) {}
             Spacer(GlanceModifier.width(6.dp))
             Text(workplace?.name ?: "—", style = textStyle(15, bold = true), maxLines = 1)
-            if (canSwitch) {
-                Spacer(GlanceModifier.width(4.dp))
-                Text("⇄", style = textStyle(15, WidgetColors.accent, bold = true))
+            Spacer(GlanceModifier.width(6.dp))
+            Box(
+                modifier = GlanceModifier.cornerRadius(10.dp).background(WidgetColors.surface)
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                Text(if (canSwitch) "⇄ zamenjaj" else "+ mesto", style = textStyle(11, WidgetColors.accent, bold = true), maxLines = 1)
             }
         }
-        Spacer(GlanceModifier.defaultWeight())
         trailing()
     }
 }
