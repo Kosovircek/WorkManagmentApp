@@ -16,6 +16,8 @@ import si.sluzbataski.data.prefs.SettingsStore
 class WorkplaceRepository(
     private val db: AppDatabase,
     private val settings: SettingsStore,
+    /** Klicano po vsakem preklopu ali spremembi delovnih mest (osveži widgete). */
+    private val onChanged: () -> Unit = {},
 ) {
     private val dao = db.workplaceDao()
 
@@ -44,7 +46,11 @@ class WorkplaceRepository(
         }
     }
 
-    fun switchTo(id: Long) { settings.activeWorkplaceId = id }
+    /** Preklopi aktivno delovno mesto – velja povsod: aplikacija, oba widgeta, nakupi, statistika. */
+    fun switchTo(id: Long) {
+        settings.activeWorkplaceId = id
+        onChanged()
+    }
 
     /** Preklopi na naslednje delovno mesto v krogu (uporablja widget). */
     suspend fun cycleNext(): Workplace? {
@@ -52,14 +58,14 @@ class WorkplaceRepository(
         if (list.isEmpty()) return null
         val idx = list.indexOfFirst { it.id == settings.activeWorkplaceId }
         val next = list[(idx + 1).mod(list.size)]
-        settings.activeWorkplaceId = next.id
+        switchTo(next.id)
         return next
     }
 
     suspend fun add(name: String, colorArgb: Long): Long =
-        dao.insert(Workplace(name = name.trim(), colorArgb = colorArgb))
+        dao.insert(Workplace(name = name.trim(), colorArgb = colorArgb)).also { onChanged() }
 
-    suspend fun update(w: Workplace) = dao.update(w)
+    suspend fun update(w: Workplace) { dao.update(w); onChanged() }
 
     /** Arhivira delovno mesto (podatki ostanejo). Zadnjega aktivnega ni mogoče arhivirati. */
     suspend fun archive(w: Workplace): Boolean {
@@ -69,10 +75,11 @@ class WorkplaceRepository(
         if (settings.activeWorkplaceId == w.id) {
             settings.activeWorkplaceId = active.first { it.id != w.id }.id
         }
+        onChanged()
         return true
     }
 
-    suspend fun unarchive(w: Workplace) = dao.update(w.copy(archivedAt = null))
+    suspend fun unarchive(w: Workplace) { dao.update(w.copy(archivedAt = null)); onChanged() }
 
     suspend fun get(id: Long): Workplace? = dao.get(id)
 }

@@ -75,13 +75,17 @@ import si.sluzbataski.data.entity.Workplace
 import si.sluzbataski.ui.components.CALENDAR_PERMISSIONS
 import si.sluzbataski.ui.components.ColorDot
 import si.sluzbataski.ui.theme.SluzbaTaskiTheme
+import si.sluzbataski.widget.QuickAddWidgetReceiver
+import si.sluzbataski.widget.TaskListWidgetReceiver
 import si.sluzbataski.widget.WidgetUpdater
+import si.sluzbataski.widget.requestPinWidget
 
 /**
  * NASTAVITVE:
  *  1. Delovna mesta – dodaj, preimenuj, barva, arhiviraj/obnovi
- *  2. Google koledar – vklop, dovoljenje, izbira koledarja
- *  3. Izvoz baze v CSV
+ *  2. Widgeti – postavitev na domači zaslon z enim klikom
+ *  3. Videz (tema) in Google koledar – vklop, dovoljenje, izbira koledarja
+ *  4. Izvoz baze v CSV in uvoz izvožene mape (prenos na drug telefon)
  */
 class SettingsActivity : ComponentActivity() {
     private val vm: SettingsViewModel by viewModels()
@@ -120,13 +124,36 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val workplaces by vm.workplaces.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<Workplace?>(null) }
     var adding by remember { mutableStateOf(false) }
+    var confirmImport by remember { mutableStateOf(false) }
+    var importing by remember { mutableStateOf(false) }
+
+    // ---- uvoz: uporabnik izbere mapo SluzbaTaski_… iz izvoza
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) scope.launch {
+            importing = true
+            try {
+                val r = vm.g.importer.import(uri)
+                vm.g.tasks.syncPendingCalendar()       // odprte taske z datumom vpiši v koledar
+                vm.g.tasks.rescheduleAllReminders()    // nastavi opomnike uvoženih taskov
+                WidgetUpdater.updateAll(context)
+                Toast.makeText(context,
+                    "Uvoženo: ${r.tasks} taskov, ${r.shopping} nakupov, ${r.photos} slik, ${r.workplaces} novih delovnih mest" +
+                        if (r.skippedTasks > 0) " (${r.skippedTasks} taskov je že obstajalo)" else "",
+                    Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Uvoz ni uspel: ${e.message}", Toast.LENGTH_LONG).show()
+            } finally {
+                importing = false
+            }
+        }
+    }
 
     // ---- izvoz: uporabnik izbere mapo, nato zapišemo CSV datoteke
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) scope.launch {
             try {
                 val r = vm.g.exporter.export(uri)
-                Toast.makeText(context, "Izvoženo v mapo ${r.folderName} (${r.rows} vrstic)", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Izvoženo v mapo ${r.folderName} (${r.rows} vrstic, ${r.photos} slik)", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(context, "Izvoz ni uspel: ${e.message}", Toast.LENGTH_LONG).show()
             }
@@ -163,21 +190,89 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             HorizontalDivider()
+            ThemeSection(vm.g.settings)
+
+            HorizontalDivider()
+            WidgetSection()
+
+            HorizontalDivider()
             CalendarSection(vm.g.calendar, vm.g)
 
             HorizontalDivider()
             // ================= Izvoz
             Text("Izvoz podatkov", style = MaterialTheme.typography.titleMedium)
             Text("Izvozi vse (vsa delovna mesta, odprte, opravljene in izbrisane taske, zgodovino sprememb in nakupe) " +
-                "v CSV datoteke, ki jih odpreš v Excelu ali Google Sheets.", style = MaterialTheme.typography.bodySmall)
+                "v CSV datoteke, ki jih odpreš v Excelu ali Google Sheets. Slike taskov se kopirajo v podmapo slike/.", style = MaterialTheme.typography.bodySmall)
             Button(onClick = { exportLauncher.launch(null) }) { Text("Izvozi v CSV …") }
+
+            // ================= Uvoz
+            Text("Uvoz podatkov", style = MaterialTheme.typography.titleMedium)
+            Text("Uvozi mapo, ki si jo prej izvozil (npr. na novem telefonu). Obstoječi podatki ostanejo, " +
+                "isti taski se ne podvojijo, delovna mesta z enakim imenom se združijo.", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = { confirmImport = true }, enabled = !importing) {
+                Text(if (importing) "Uvažam …" else "Uvozi iz izvožene mape …")
+            }
         }
+    }
+
+    if (confirmImport) {
+        AlertDialog(
+            onDismissRequest = { confirmImport = false },
+            title = { Text("Uvoz iz izvoza") },
+            text = { Text("V naslednjem koraku izberi mapo SluzbaTaski_<datum> (tisto, v kateri so taski.csv, nakupi.csv … in mapa slike). " +
+                "Podatki se dodajo k obstoječim.") },
+            confirmButton = { TextButton(onClick = { confirmImport = false; importLauncher.launch(null) }) { Text("Izberi mapo") } },
+            dismissButton = { TextButton(onClick = { confirmImport = false }) { Text("Prekliči") } },
+        )
     }
 
     if (adding) WorkplaceDialog(null, onDismiss = { adding = false }) { name, color -> vm.add(name, color); adding = false }
     editing?.let { w ->
         WorkplaceDialog(w, onDismiss = { editing = null }) { name, color -> vm.save(w.copy(name = name, colorArgb = color)); editing = null }
     }
+}
+
+/**
+ * Razdelek "Widgeti": gumba, ki widget postavita na domači zaslon (brez iskanja
+ * v seznamu pripomočkov, kar je na nekaterih telefonih težko).
+ */
+@Composable
+private fun WidgetSection() {
+    val context = LocalContext.current
+    fun pin(receiver: Class<*>) {
+        if (!requestPinWidget(context, receiver)) {
+            Toast.makeText(context, "Zaganjalnik tega ne podpira. Dolgo pritisni na domači zaslon → Pripomočki → Službeni taski.",
+                Toast.LENGTH_LONG).show()
+        }
+    }
+    Text("Widgeti na domačem zaslonu", style = MaterialTheme.typography.titleMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { pin(QuickAddWidgetReceiver::class.java) }) { Text("+ Hitri vnos") }
+        OutlinedButton(onClick = { pin(TaskListWidgetReceiver::class.java) }) { Text("+ Seznam taskov") }
+    }
+    Text("Telefon te bo vprašal za potrditev. Na Xiaomi telefonih po potrebi v nastavitvah aplikacije " +
+        "(Dovoljenja → Druga dovoljenja) vklopi \"Bližnjice na začetnem zaslonu\".",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** Razdelek "Videz": sistemska, svetla ali temna tema (velja takoj). */
+@Composable
+private fun ThemeSection(settings: si.sluzbataski.data.prefs.SettingsStore) {
+    var mode by remember { mutableIntStateOf(settings.themeMode) }
+    Text("Videz", style = MaterialTheme.typography.titleMedium)
+    listOf(
+        si.sluzbataski.data.prefs.SettingsStore.THEME_SYSTEM to "Kot telefon (sistemska)",
+        si.sluzbataski.data.prefs.SettingsStore.THEME_LIGHT to "Svetla",
+        si.sluzbataski.data.prefs.SettingsStore.THEME_DARK to "Temna",
+    ).forEach { (value, label) ->
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().clickable { mode = value; settings.themeMode = value }) {
+            RadioButton(mode == value, { mode = value; settings.themeMode = value })
+            Text(label)
+        }
+    }
+    Text("Widgeta sledita temnemu načinu telefona.", style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** Razdelek za Google koledar. */

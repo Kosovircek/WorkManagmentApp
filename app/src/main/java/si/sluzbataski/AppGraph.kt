@@ -8,6 +8,12 @@ import si.sluzbataski.data.repo.ShoppingRepository
 import si.sluzbataski.data.repo.TaskRepository
 import si.sluzbataski.data.repo.WorkplaceRepository
 import si.sluzbataski.export.CsvExporter
+import si.sluzbataski.export.CsvImporter
+import si.sluzbataski.widget.WidgetUpdater
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Preprost "service locator": na enem mestu ustvari in hrani vse glavne objekte
@@ -23,10 +29,13 @@ class AppGraph private constructor(context: Context) {
     val db: AppDatabase = AppDatabase.get(app)
     val settings = SettingsStore(app)
     val calendar = CalendarSync(app, settings)
-    val workplaces = WorkplaceRepository(db, settings)
+    /** Obseg za kratka ozadna opravila (npr. osvežitev widgetov po preklopu). */
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val workplaces = WorkplaceRepository(db, settings) { scope.launch { WidgetUpdater.updateAll(app) } }
     val tasks = TaskRepository(app, db, calendar)
     val shopping = ShoppingRepository(db)
     val exporter = CsvExporter(app, db)
+    val importer = CsvImporter(app, db)
 
     companion object {
         @Volatile private var instance: AppGraph? = null

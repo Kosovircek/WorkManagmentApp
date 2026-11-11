@@ -24,12 +24,18 @@ si/sluzbataski/
 │   └── repo/                  POSLOVNA LOGIKA – edina pot za spremembe
 │       ├── TaskRepository.kt    dodaj/uredi/opravi/izbriši + zgodovina + koledar + widgeti
 │       ├── TaskSorting.kt       pravilo razvrščanja (eno mesto za app in widget)
+│       ├── Recurrence.kt        pravila ponavljanja in izračun naslednje ponovitve
 │       ├── WorkplaceRepository.kt  delovna mesta, preklop, kroženje za widget
 │       └── ShoppingRepository.kt
 │
+├── reminder/
+│   ├── ReminderScheduler.kt   nastavljanje alarmov opomnikov, kanal obvestil, možnosti opomnika
+│   ├── ReminderReceiver.kt    obvestilo + vibriranje; gumba Opravljeno / Odloži
+│   └── BootReceiver.kt        po zagonu telefona znova nastavi alarme
 ├── calendar/CalendarSync.kt   vpis/posodobitev/brisanje dogodkov v Google koledarju
 ├── photo/PhotoStorage.kt      datoteke slik, FileProvider za kamero, nalaganje sličic
-├── export/CsvExporter.kt      izvoz vseh tabel v CSV (; ločilo, UTF-8 BOM za Excel)
+├── export/CsvExporter.kt      izvoz vseh tabel v CSV (; ločilo, UTF-8 BOM za Excel) + slike
+├── export/CsvImporter.kt      uvoz izvožene mape (združevanje brez podvajanja)
 ├── stats/StatsCalculator.kt   izračun vseh številk in serij za statistiko (čisti Kotlin)
 ├── util/Format.kt             slovensko oblikovanje datumov, starosti, trajanj
 │
@@ -37,13 +43,15 @@ si/sluzbataski/
 │   ├── QuickAddWidget.kt      widget za hitri vnos (+ Receiver)
 │   ├── TaskListWidget.kt      widget s seznamom taskov (+ Receiver)
 │   ├── WidgetActions.kt       dejanja: preklop mesta, opravljeno; Intenti za odpiranje zaslonov
-│   ├── WidgetUi.kt            skupni gradniki (glava, gumbi, barve)
+│   ├── WidgetUi.kt            skupni gradniki (glava, gumbi, svetle/temne barve)
+│   ├── WidgetData.kt          živo opazovanje podatkov za widgeta
 │   └── WidgetUpdater.kt       osveži oba widgeta
 │
 └── ui/
     ├── theme/Theme.kt         Material 3 tema (dinamične barve, temni način)
     ├── components/
     │   ├── TaskForm.kt          obrazec taska (opis+narek, nujnost, datum/ura, naročnik, slika)
+    │   ├── RecurrenceEditor.kt  stikalo in podmeni ponavljanja, izbira opomnika
     │   ├── TaskCard.kt          kartica taska v seznamih
     │   ├── Charts.kt            grafi (stolpčni, vodoravni) in KPI ploščice
     │   ├── PhotoThumb.kt        predogled slike + celozaslonski ogled
@@ -68,6 +76,9 @@ Viri (`app/src/main/res/`): `xml/*_widget_info.xml` (velikost widgetov), `xml/fi
 | dodati/preimenovati nujnost ali barvo | `data/entity/Urgency.kt` |
 | dodati polje tasku | `Task.kt` → `AppDatabase` (verzija + migracija) → `TaskForm.kt` → `CsvExporter.kt` |
 | spremeniti videz widgeta | `widget/QuickAddWidget.kt`, `widget/TaskListWidget.kt`, `widget/WidgetUi.kt` |
+| dodati možnost opomnika | `ReminderScheduler.OPTIONS` |
+| spremeniti vibriranje opomnika | `ReminderReceiver.VIBRATION` |
 | spremeniti ime koledarja | `CalendarSync.CALENDAR_NAME` |
 | dodati statistiko | `stats/StatsCalculator.kt` (izračun) + `ui/stats/StatsActivity.kt` (prikaz) |
-| dodati stolpec v CSV | `export/CsvExporter.kt` |
+| dodati stolpec v CSV | `export/CsvExporter.kt` in `export/CsvImporter.kt` |
+| spremeniti barve teme | `ui/theme/Theme.kt` (aplikacija), `WidgetColors` v `widget/WidgetUi.kt` (widgeti) |

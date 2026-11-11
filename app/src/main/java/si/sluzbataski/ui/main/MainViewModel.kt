@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 import si.sluzbataski.AppGraph
 import si.sluzbataski.data.entity.Task
 import si.sluzbataski.data.entity.Workplace
-import si.sluzbataski.widget.WidgetUpdater
 
 /**
  * ViewModel glavnega zaslona: drži aktivno delovno mesto in razvrščen seznam
@@ -35,8 +34,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     fun switchTo(w: Workplace) {
-        g.workplaces.switchTo(w.id)
-        viewModelScope.launch { WidgetUpdater.updateAll(getApplication()) }
+        g.workplaces.switchTo(w.id) // repozitorij sam osveži widgete
     }
 
     fun complete(id: Long) = viewModelScope.launch { g.tasks.complete(id) }

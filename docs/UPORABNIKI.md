@@ -86,4 +86,5 @@ grafov skozi čas in razdelitev po nujnosti, naročnikih in dnevih.
 
 ### UC11 – Izvoz CSV
 *Nastavitve → Izvozi v CSV* → izbira mape → nastane mapa `SluzbaTaski_<datum>` s štirimi CSV
-datotekami (delovna mesta, taski, zgodovina, nakupi), pripravljenimi za Excel.
+datotekami (delovna mesta, taski, zgodovina, nakupi), pripravljenimi za Excel, in podmapo `slike/`
+(slika vsakega taska kot `task_<id>.jpg`).

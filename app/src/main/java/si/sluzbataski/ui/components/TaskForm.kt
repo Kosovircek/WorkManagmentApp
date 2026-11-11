@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import si.sluzbataski.AppGraph
 import si.sluzbataski.data.entity.Task
 import si.sluzbataski.data.entity.Urgency
+import si.sluzbataski.data.repo.Recurrence
 import si.sluzbataski.photo.PhotoStorage
 import si.sluzbataski.util.Format
 import java.io.File
@@ -76,6 +77,9 @@ class TaskFormState(
     photoPath: String? = null,
     /** Slika, ki je že shranjena v bazi (te obrazec ne sme sam pobrisati). */
     val originalPhotoPath: String? = null,
+    recurrenceType: String? = null,
+    recurrenceDays: String = "",
+    reminderMinutes: Int? = null,
 ) {
     var description by mutableStateOf(description)
     var urgency by mutableStateOf(urgency)
@@ -83,9 +87,23 @@ class TaskFormState(
     var dueHasTime by mutableStateOf(dueHasTime)
     var client by mutableStateOf(client)
     var photoPath by mutableStateOf(photoPath)
+    /** Vrsta ponavljanja (Recurrence.WEEKLY/MONTHLY/YEARLY) ali null. */
+    var recurrenceType by mutableStateOf(recurrenceType)
+    /** Izbrani dnevi ponavljanja, ločeni z vejico (glej Recurrence). */
+    var recurrenceDays by mutableStateOf(recurrenceDays)
+    /** Minute pred rokom za opomnik ali null. */
+    var reminderMinutes by mutableStateOf(reminderMinutes)
 
-    /** Obrazec je veljaven, ko je opis vpisan in ima "Datum" izbran datum. */
-    val isValid: Boolean get() = description.isNotBlank() && (urgency != Urgency.DATUM || dueAt != null)
+    /** Ali je ponavljanje vklopljeno in ima izbran vsaj en dan. */
+    val hasRecurrence: Boolean get() = recurrenceType != null && Recurrence.parse(recurrenceDays).isNotEmpty()
+
+    /**
+     * Obrazec je veljaven, ko je opis vpisan in ima "Datum" izbran datum
+     * (pri ponavljajočem tasku se prvi datum lahko izračuna sam).
+     */
+    val isValid: Boolean get() = description.isNotBlank() &&
+        (urgency != Urgency.DATUM || dueAt != null || hasRecurrence) &&
+        (recurrenceType == null || hasRecurrence)
 
     /** Zamenja sliko; vmesne (še neshranjene) slike pobriše, da ne ostajajo smeti. */
     fun replacePhoto(newPath: String?) {
@@ -101,16 +119,21 @@ class TaskFormState(
     fun applyTo(t: Task): Task = t.copy(
         description = description, urgency = urgency, dueAt = dueAt, dueHasTime = dueHasTime,
         client = client, photoPath = photoPath,
+        recurrenceType = if (hasRecurrence) recurrenceType else null,
+        recurrenceDays = if (hasRecurrence) recurrenceDays else null,
+        reminderMinutes = reminderMinutes,
     )
 
     companion object {
-        fun from(t: Task) = TaskFormState(t.description, t.urgency, t.dueAt, t.dueHasTime, t.client ?: "", t.photoPath, t.photoPath)
+        fun from(t: Task) = TaskFormState(t.description, t.urgency, t.dueAt, t.dueHasTime, t.client ?: "", t.photoPath, t.photoPath,
+            t.recurrenceType, t.recurrenceDays ?: "", t.reminderMinutes)
 
         val Saver = listSaver<TaskFormState, Any?>(
-            save = { listOf(it.description, it.urgency.name, it.dueAt, it.dueHasTime, it.client, it.photoPath, it.originalPhotoPath) },
+            save = { listOf(it.description, it.urgency.name, it.dueAt, it.dueHasTime, it.client, it.photoPath, it.originalPhotoPath,
+                it.recurrenceType, it.recurrenceDays, it.reminderMinutes) },
             restore = {
                 TaskFormState(it[0] as String, Urgency.fromName(it[1] as String), it[2] as Long?, it[3] as Boolean,
-                    it[4] as String, it[5] as String?, it[6] as String?)
+                    it[4] as String, it[5] as String?, it[6] as String?, it[7] as String?, it[8] as String, it[9] as Int?)
             },
         )
     }
@@ -227,12 +250,15 @@ fun TaskForm(
             }
         }
 
+        // ---------------- Ponavljanje (podmeni se pokaže šele, ko ga vklopiš)
+        RecurrenceEditor(state, onEnable = { ensureCalendarPermission() })
+
         // ---------------- Datum (samo pri nujnosti "Datum")
         if (state.urgency == Urgency.DATUM) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { pickDate(context, state) }) {
                     Icon(Icons.Outlined.CalendarMonth, null); Spacer(Modifier.width(6.dp))
-                    Text(state.dueAt?.let { Format.date(it) } ?: "Izberi datum")
+                    Text(state.dueAt?.let { Format.date(it) } ?: if (state.hasRecurrence) "Prvi: samodejno" else "Izberi datum")
                 }
                 OutlinedButton(onClick = { pickTime(context, state) }, enabled = state.dueAt != null) {
                     Icon(Icons.Outlined.Schedule, null); Spacer(Modifier.width(6.dp))
@@ -242,6 +268,7 @@ fun TaskForm(
                     Icon(Icons.Default.Close, "Brez ure")
                 }
             }
+            ReminderPicker(state)
             Text("Task bo dodan v koledar SluzbaTaski.", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

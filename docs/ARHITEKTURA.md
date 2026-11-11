@@ -104,6 +104,10 @@ erDiagram
         long completedAt "null = odprt"
         long deletedAt "null = ni izbrisan"
         long calendarEventId
+        string recurrenceType "WEEKLY, MONTHLY, YEARLY ali null"
+        string recurrenceDays "npr. 1,3 / 1,15 / 0315,1224"
+        long seriesId "prvi task serije ponovitev"
+        int reminderMinutes "minute pred rokom ali null"
     }
     TASK_EVENTS {
         long id PK
@@ -180,9 +184,40 @@ Aplikacija uporablja Androidov *Calendar Provider*, ki vsebuje koledarje Google 
 Dogodek, vpisan v koledar Google računa, Android sam sinhronizira z Google Koledarjem, zato ni
 potrebna nobena Google prijava ali API ključ. Ciljni koledar je ročno izbran v Nastavitvah ali
 (privzeto) koledar z imenom `SluzbaTaski`. Če dovoljenje ob vnosu še ni bilo dano, se task vpiše
-ob naslednjem zagonu (`TaskRepository.syncPendingCalendar`).
+ob naslednjem zagonu (`TaskRepository.syncPendingCalendar`). Pred vpisom novega dogodka aplikacija
+preveri, ali v koledarju že obstaja dogodek z enakim naslovom in začetkom (npr. po uvozu na nov
+telefon z istim Google računom) in ga prevzame, namesto da bi ga podvojila.
 
-## 8. Spreminjanje baze v prihodnosti
+## 8. Ponavljajoči taski in opomniki
+
+**Ponavljanje** (`data/repo/Recurrence.kt`): ponavljajoč task ima vedno datum. Ko ga označiš kot
+opravljenega, `TaskRepository.complete` izračuna naslednji ustrezen dan (po roku trenutnega, a ne
+v preteklosti) in ustvari nov task z enakimi podatki (brez slike), povezan prek `seriesId`.
+
+**Opomniki** (`reminder/`): `ReminderScheduler` nastavi `AlarmManager.setAlarmClock` (točno, kot
+budilka) `reminderMinutes` pred rokom (pri tasku brez ure ob 9:00). `ReminderReceiver` pokaže
+obvestilo z gumboma *Opravljeno* in *Odloži 10 min* ter vibrira. Alarm se nastavi/prekliče ob vsaki
+spremembi taska, `BootReceiver` pa jih po ponovnem zagonu telefona nastavi znova.
+
+```mermaid
+sequenceDiagram
+    participant R as TaskRepository
+    participant S as ReminderScheduler
+    participant A as AlarmManager
+    participant RR as ReminderReceiver
+    actor U as Uporabnik
+    R->>S: schedule(task) ob vsaki spremembi
+    S->>A: setAlarmClock(rok − opomnik)
+    A-->>RR: ob času opomnika
+    RR->>U: obvestilo + vibriranje
+    U->>RR: "Opravljeno" / "Odloži 10 min"
+    RR->>R: complete(id)  (ponavljajoč → nova ponovitev)
+```
+
+## 9. Spreminjanje baze v prihodnosti
+
+Zgodovina verzij: **v1** začetna, **v2** ponavljanje in opomniki (`MIGRATION_1_2`).
+
 
 Ob spremembi entitete povečaj `version` v `AppDatabase` in dodaj `Migration`. **Nikoli** ne uporabi
 `fallbackToDestructiveMigration()` – to bi izbrisalo celotno zgodovino.

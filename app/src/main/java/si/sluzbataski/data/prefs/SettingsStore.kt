@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.callbackFlow
 /**
  * Majhne nastavitve aplikacije (SharedPreferences):
  *  - katero delovno mesto je trenutno aktivno,
- *  - ročno izbran koledar (če uporabnik ne uporablja privzetega "SluzbaTaski").
+ *  - ročno izbran koledar (če uporabnik ne uporablja privzetega "SluzbaTaski"),
+ *  - tema (sistemska / svetla / temna).
  *
  * Do teh nastavitev dostopajo tudi widgeti, zato so v SharedPreferences
  * (hitro, sinhrono branje) in ne v bazi.
@@ -33,6 +34,21 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_CALENDAR_ENABLED, true)
         set(value) = prefs.edit().putBoolean(KEY_CALENDAR_ENABLED, value).apply()
 
+    /** Tema aplikacije: [THEME_SYSTEM], [THEME_LIGHT] ali [THEME_DARK]. */
+    var themeMode: Int
+        get() = prefs.getInt(KEY_THEME, THEME_SYSTEM)
+        set(value) = prefs.edit().putInt(KEY_THEME, value).apply()
+
+    /** Flow teme – vsi odprti zasloni se ob spremembi takoj prebarvajo. */
+    fun observeThemeMode(): Flow<Int> = callbackFlow {
+        trySend(themeMode)
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == KEY_THEME) trySend(themeMode)
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
     /** Flow, ki odda novo vrednost vsakič, ko se aktivno delovno mesto spremeni. */
     fun observeActiveWorkplaceId(): Flow<Long> = callbackFlow {
         trySend(activeWorkplaceId)
@@ -43,9 +59,13 @@ class SettingsStore(context: Context) {
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    private companion object {
-        const val KEY_ACTIVE_WP = "active_workplace_id"
-        const val KEY_CALENDAR_ID = "calendar_id"
-        const val KEY_CALENDAR_ENABLED = "calendar_enabled"
+    companion object {
+        const val THEME_SYSTEM = 0
+        const val THEME_LIGHT = 1
+        const val THEME_DARK = 2
+        private const val KEY_THEME = "theme_mode"
+        private const val KEY_ACTIVE_WP = "active_workplace_id"
+        private const val KEY_CALENDAR_ID = "calendar_id"
+        private const val KEY_CALENDAR_ENABLED = "calendar_enabled"
     }
 }

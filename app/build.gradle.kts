@@ -22,8 +22,8 @@ android {
         applicationId = "si.sluzbataski"
         minSdk = 26          // Android 8.0 – potrebno za java.time in adaptivne ikone
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 7
+        versionName = "1.6"
     }
 
     buildTypes {
@@ -62,6 +62,9 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Testi
+    testImplementation("junit:junit:4.13.2")
 
     // Room – baza podatkov
     implementation("androidx.room:room-runtime:2.6.1")

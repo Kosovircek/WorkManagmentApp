@@ -58,6 +58,8 @@ fun TaskCard(
                 val sub = buildString {
                     if (task.hasDate) append("📅 ").append(Format.due(task.dueAt!!, task.dueHasTime))
                     else append(task.urgency.label)
+                    if (task.isRecurring) append(" 🔁")
+                    if (task.reminderMinutes != null && task.isOpen) append(" ⏰")
                     append(" · vnešen pred ").append(Format.age(task.createdAt))
                     task.client?.let { append(" · ").append(it) }
                     trailingInfo?.let { append(" · ").append(it) }

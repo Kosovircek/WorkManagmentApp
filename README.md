@@ -13,11 +13,13 @@ Napisano v **Kotlinu** (Jetpack Compose, Room, Glance), vsa koda je podrobno kom
 | **Oba widgeta** | klik na ime delovnega mesta (⇄) preklopi na naslednje delovno mesto |
 | **Glavni zaslon** | isti seznam, razdeljen po skupinah; ▲▼ premik nujnosti, ✓ opravljeno (z razveljavitvijo) |
 | **Nov task / podrobnosti** | opis (tudi z glasom 🎤), nujnost ali datum (+ opcijska ura), naročnik s predlogi, slika iz kamere ali galerije, zgodovina vseh sprememb |
+| **Ponavljajoči taski** | stikalo 🔁 v obrazcu odpre podmeni: tedensko (več dni v tednu), mesečno (več dni v mesecu), letno (več datumov); ko task opraviš, se ustvari naslednja ponovitev |
+| **Opomniki** | pri taskih z datumom: ob roku, 5 min … 1 teden prej; obvestilo + vibriranje kot budilka, gumba *Opravljeno* in *Odloži 10 min* |
 | **Google Koledar** | taski z datumom se vpišejo v koledar **SluzbaTaski**; ob opravljenem dobijo "✔", ob izbrisu se odstranijo |
 | **Nakupi** | seznam po delovnih mestih, opcijska količina in trgovina, filter po trgovini, zgodovina kupljenega |
 | **Statistika** | prejeti/opravljeni, povprečni in mediani čas izvedbe, zamujeni, grafi skozi čas, po nujnosti, naročnikih, dnevih v tednu, trgovinah |
 | **Arhiv** | vsi opravljeni in izbrisani taski z iskanjem; vse je mogoče ponovno odpreti ali obnoviti |
-| **Nastavitve** | delovna mesta (dodaj, preimenuj, barva, arhiviraj), izbira koledarja, **izvoz vseh podatkov v CSV** |
+| **Nastavitve** | gumba za postavitev widgetov na domači zaslon, delovna mesta (dodaj, preimenuj, barva, arhiviraj), izbira koledarja, **izvoz vseh podatkov v CSV** (s slikami v podmapi `slike/`) in **uvoz** izvožene mape (prenos na nov telefon), tema Sistemska/Svetla/Temna |
 
 Nič se nikoli ne izbriše iz baze: opravljeni taski, izbrisani taski, kupljene stvari in vsaka
 sprememba ostanejo shranjeni s časi (ustvarjeno, spremenjeno, opravljeno, izbrisano).
@@ -38,7 +40,21 @@ Iz ukazne vrstice: `./gradlew assembleDebug` (potrebuješ JDK 17 in Android SDK 
    V aplikaciji *Nastavitve → Google koledar* dovoli dostop; prikaže se "✓ Ciljni koledar: SluzbaTaski".
    (Namesto tega lahko izbereš katerikoli drug koledar.)
 2. **Delovna mesta:** ob prvem zagonu obstaja "Služba". V *Nastavitvah* ga preimenuj in dodaj ostala.
-3. **Widgeta:** dolg pritisk na domači zaslon → *Pripomočki* → "Službeni taski" → povleci *Hitri vnos taska* in *Seznam taskov*.
+3. **Widgeta:** v aplikaciji *Meni → Dodaj widget na domači zaslon* in pritisni *+ Hitri vnos* / *+ Seznam taskov*. Ali ročno: dolg pritisk na domači zaslon → *Pripomočki* → "Službeni taski" (na Xiaomiju se pomakni navzdol pod sistemske pripomočke).
+
+## Opomniki na Xiaomi telefonih
+
+MIUI/HyperOS rad ustavlja aplikacije v ozadju. Da opomniki zanesljivo delujejo (tudi po ponovnem zagonu):
+*Nastavitve telefona → Aplikacije → Službeni taski* → vklopi **Samodejni zagon (Autostart)**,
+pri **Varčevanje z baterijo** izberi **Brez omejitev** in v **Obvestilih** dovoli obvestila.
+
+## Prenos na nov telefon
+
+1. Na starem telefonu: *Nastavitve → Izvozi v CSV* → izberi mapo (npr. Google Drive ali Prenosi).
+2. Mapo `SluzbaTaski_<datum>` prenesi na nov telefon (ali jo odpri neposredno z Google Drive).
+3. Na novem telefonu: *Nastavitve → Uvozi iz izvožene mape* → izberi to mapo.
+
+Uvoz ničesar ne briše; ponoven uvoz iste mape ne podvoji taskov.
 
 ## Dokumentacija
 
