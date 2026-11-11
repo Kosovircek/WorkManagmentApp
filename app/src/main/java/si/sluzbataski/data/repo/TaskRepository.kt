@@ -177,7 +177,7 @@ class TaskRepository(
     // ---------------------------------------------------------------- pomožno
 
     private suspend fun syncCalendar(task: Task) {
-        val newEventId = calendar.sync(task)
+        val newEventId = calendar.sync(task) { dao.getUsedEventIds().toSet() }
         if (newEventId != task.calendarEventId) {
             // shranimo samo ID dogodka (brez spremembe updatedAt)
             dao.get(task.id)?.let { dao.update(it.copy(calendarEventId = newEventId)) }

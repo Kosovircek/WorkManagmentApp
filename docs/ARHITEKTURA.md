@@ -180,7 +180,9 @@ Aplikacija uporablja Androidov *Calendar Provider*, ki vsebuje koledarje Google 
 Dogodek, vpisan v koledar Google računa, Android sam sinhronizira z Google Koledarjem, zato ni
 potrebna nobena Google prijava ali API ključ. Ciljni koledar je ročno izbran v Nastavitvah ali
 (privzeto) koledar z imenom `SluzbaTaski`. Če dovoljenje ob vnosu še ni bilo dano, se task vpiše
-ob naslednjem zagonu (`TaskRepository.syncPendingCalendar`).
+ob naslednjem zagonu (`TaskRepository.syncPendingCalendar`). Pred vpisom novega dogodka aplikacija
+preveri, ali v koledarju že obstaja dogodek z enakim naslovom in začetkom (npr. po uvozu na nov
+telefon z istim Google računom) in ga prevzame, namesto da bi ga podvojila.
 
 ## 8. Spreminjanje baze v prihodnosti
 

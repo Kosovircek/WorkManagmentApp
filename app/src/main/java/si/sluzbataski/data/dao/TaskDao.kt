@@ -47,6 +47,10 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE urgency = 'DATUM' AND dueAt IS NOT NULL AND calendarEventId IS NULL AND completedAt IS NULL AND deletedAt IS NULL")
     suspend fun getDatedWithoutEvent(): List<Task>
 
+    /** ID-ji koledarskih dogodkov, ki so že povezani s kakim taskom. */
+    @Query("SELECT calendarEventId FROM tasks WHERE calendarEventId IS NOT NULL")
+    suspend fun getUsedEventIds(): List<Long>
+
     /** Seznam različnih naročnikov (za predloge pri vnosu). */
     @Query("SELECT DISTINCT client FROM tasks WHERE client IS NOT NULL AND client != '' ORDER BY client COLLATE NOCASE")
     fun observeClients(): Flow<List<String>>
