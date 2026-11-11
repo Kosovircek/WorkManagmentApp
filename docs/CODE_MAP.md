@@ -24,9 +24,14 @@ si/sluzbataski/
 │   └── repo/                  POSLOVNA LOGIKA – edina pot za spremembe
 │       ├── TaskRepository.kt    dodaj/uredi/opravi/izbriši + zgodovina + koledar + widgeti
 │       ├── TaskSorting.kt       pravilo razvrščanja (eno mesto za app in widget)
+│       ├── Recurrence.kt        pravila ponavljanja in izračun naslednje ponovitve
 │       ├── WorkplaceRepository.kt  delovna mesta, preklop, kroženje za widget
 │       └── ShoppingRepository.kt
 │
+├── reminder/
+│   ├── ReminderScheduler.kt   nastavljanje alarmov opomnikov, kanal obvestil, možnosti opomnika
+│   ├── ReminderReceiver.kt    obvestilo + vibriranje; gumba Opravljeno / Odloži
+│   └── BootReceiver.kt        po zagonu telefona znova nastavi alarme
 ├── calendar/CalendarSync.kt   vpis/posodobitev/brisanje dogodkov v Google koledarju
 ├── photo/PhotoStorage.kt      datoteke slik, FileProvider za kamero, nalaganje sličic
 ├── export/CsvExporter.kt      izvoz vseh tabel v CSV (; ločilo, UTF-8 BOM za Excel) + slike
@@ -46,6 +51,7 @@ si/sluzbataski/
     ├── theme/Theme.kt         Material 3 tema (dinamične barve, temni način)
     ├── components/
     │   ├── TaskForm.kt          obrazec taska (opis+narek, nujnost, datum/ura, naročnik, slika)
+    │   ├── RecurrenceEditor.kt  stikalo in podmeni ponavljanja, izbira opomnika
     │   ├── TaskCard.kt          kartica taska v seznamih
     │   ├── Charts.kt            grafi (stolpčni, vodoravni) in KPI ploščice
     │   ├── PhotoThumb.kt        predogled slike + celozaslonski ogled
@@ -70,6 +76,8 @@ Viri (`app/src/main/res/`): `xml/*_widget_info.xml` (velikost widgetov), `xml/fi
 | dodati/preimenovati nujnost ali barvo | `data/entity/Urgency.kt` |
 | dodati polje tasku | `Task.kt` → `AppDatabase` (verzija + migracija) → `TaskForm.kt` → `CsvExporter.kt` |
 | spremeniti videz widgeta | `widget/QuickAddWidget.kt`, `widget/TaskListWidget.kt`, `widget/WidgetUi.kt` |
+| dodati možnost opomnika | `ReminderScheduler.OPTIONS` |
+| spremeniti vibriranje opomnika | `ReminderReceiver.VIBRATION` |
 | spremeniti ime koledarja | `CalendarSync.CALENDAR_NAME` |
 | dodati statistiko | `stats/StatsCalculator.kt` (izračun) + `ui/stats/StatsActivity.kt` (prikaz) |
 | dodati stolpec v CSV | `export/CsvExporter.kt` in `export/CsvImporter.kt` |

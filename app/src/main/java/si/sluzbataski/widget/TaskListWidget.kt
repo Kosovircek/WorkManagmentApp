@@ -107,7 +107,11 @@ class TaskListWidget : GlanceAppWidget() {
                 ) {
                     Text(task.description, style = textStyle(14), maxLines = 2)
                     val sub = buildString {
-                        if (task.hasDate) append("📅 ").append(Format.due(task.dueAt!!, task.dueHasTime))
+                        if (task.hasDate) {
+                            append("📅 ").append(Format.due(task.dueAt!!, task.dueHasTime))
+                            if (task.isRecurring) append(" 🔁")
+                            if (task.reminderMinutes != null) append(" ⏰")
+                        }
                         else append(task.urgency.label).append(" · ").append(Format.age(task.createdAt))
                         task.client?.let { append(" · ").append(it) }
                         if (task.photoPath != null) append(" · 📷")

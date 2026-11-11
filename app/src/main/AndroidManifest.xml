@@ -10,6 +10,13 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
+    <!-- Opomniki: obvestila, vibriranje, točni alarmi (kot budilka) in ponovna nastavitev po zagonu -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Kamera ni obvezna (aplikacija dela tudi na napravah brez nje) -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
@@ -67,6 +74,17 @@
             android:label="@string/widget_task_list_name">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/task_list_widget_info" />
+        </receiver>
+
+        <!-- Opomniki: sprožitev alarma in gumba v obvestilu (Opravljeno, Odloži) -->
+        <receiver android:name=".reminder.ReminderReceiver" android:exported="false" />
+
+        <!-- Po ponovnem zagonu telefona ali posodobitvi aplikacije znova nastavi alarme -->
+        <receiver android:name=".reminder.BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
         </receiver>
 
         <!-- Omogoča kameri, da zapiše sliko v notranjo mapo aplikacije -->

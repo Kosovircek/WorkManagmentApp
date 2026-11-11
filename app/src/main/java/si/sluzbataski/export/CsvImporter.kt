@@ -32,6 +32,7 @@ import java.time.format.DateTimeFormatter
  *  - postavka nakupa, ki že obstaja (enak čas vnosa + enako ime), se preskoči
  *  - slike se kopirajo v notranji pomnilnik aplikacije
  *  - ID-ji se dodelijo na novo (stari ID-ji iz CSV služijo le za povezovanje med datotekami)
+ *  - ponavljanje in opomniki se prenesejo (alarmi se po uvozu nastavijo znova)
  *  - povezave na koledar se NE prenesejo; odprti taski z datumom se v koledar vpišejo
  *    na novo (klic syncPendingCalendar po uvozu)
  */
@@ -81,6 +82,7 @@ class CsvImporter(private val context: Context, private val db: AppDatabase) {
             val taskDao = db.taskDao()
             val existing = taskDao.getAll().map { key(it.createdAt, it.description) }.toHashSet()
             val oldToNew = mutableMapOf<String, Pair<Long, Long>>() // stari id -> (nov id, workplaceId)
+            val seriesOld = mutableMapOf<Long, String>()             // nov id -> stari serija_id
             for (r in taskRows) {
                 val description = r["opis"]
                 val created = parseTime(r["ustvarjen"]) ?: continue
@@ -104,9 +106,20 @@ class CsvImporter(private val context: Context, private val db: AppDatabase) {
                     completedAt = parseTime(r["opravljen"]),
                     deletedAt = parseTime(r["izbrisan"]),
                     calendarEventId = null,
+                    recurrenceType = r["ponavljanje"].ifBlank { null }?.takeIf { urgency == Urgency.DATUM },
+                    recurrenceDays = r["ponavljanje_dnevi"].ifBlank { null }?.takeIf { urgency == Urgency.DATUM },
+                    reminderMinutes = r["opomnik_min"].toIntOrNull()?.takeIf { urgency == Urgency.DATUM },
                 )
-                oldToNew[r["id"]] = taskDao.insert(task) to wp
+                val newId = taskDao.insert(task)
+                oldToNew[r["id"]] = newId to wp
+                r["serija_id"].takeIf { it.isNotBlank() }?.let { seriesOld[newId] = it }
                 newTasks++
+            }
+
+            // serije ponovitev: stari serija_id preslikamo v nov ID prvega taska
+            for ((newId, oldSeries) in seriesOld) {
+                val newSeries = oldToNew[oldSeries]?.first ?: continue
+                taskDao.get(newId)?.let { taskDao.update(it.copy(seriesId = newSeries)) }
             }
 
             // ---------------- zgodovina (samo za na novo uvožene taske)

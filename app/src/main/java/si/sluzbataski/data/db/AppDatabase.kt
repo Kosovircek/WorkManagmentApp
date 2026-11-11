@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import si.sluzbataski.data.dao.ShoppingDao
 import si.sluzbataski.data.dao.TaskDao
 import si.sluzbataski.data.dao.TaskEventDao
@@ -23,7 +25,7 @@ import si.sluzbataski.data.entity.Workplace
  */
 @Database(
     entities = [Workplace::class, Task::class, TaskEvent::class, ShoppingItem::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -36,6 +38,16 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile private var instance: AppDatabase? = null
 
+        /** v1 → v2: ponavljajoči taski in opomniki (samo nova, prazna polja; podatki ostanejo). */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceType TEXT")
+                db.execSQL("ALTER TABLE tasks ADD COLUMN recurrenceDays TEXT")
+                db.execSQL("ALTER TABLE tasks ADD COLUMN seriesId INTEGER")
+                db.execSQL("ALTER TABLE tasks ADD COLUMN reminderMinutes INTEGER")
+            }
+        }
+
         /** Vrne edino instanco baze (singleton) – varno tudi iz widgetov. */
         fun get(context: Context): AppDatabase =
             instance ?: synchronized(this) {
@@ -43,7 +55,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "sluzbataski.db",
-                ).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
             }
     }
 }

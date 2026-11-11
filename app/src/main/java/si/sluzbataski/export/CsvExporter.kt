@@ -55,7 +55,8 @@ class CsvExporter(private val context: Context, private val db: AppDatabase) {
         // --- taski
         rows += write(folder, "taski.csv",
             listOf("id", "delovno_mesto", "opis", "nujnost", "rok", "rok_z_uro", "narocnik", "slika",
-                "ustvarjen", "posodobljen", "opravljen", "izbrisan", "status", "trajanje_ur", "koledar_dogodek_id"),
+                "ustvarjen", "posodobljen", "opravljen", "izbrisan", "status", "trajanje_ur", "koledar_dogodek_id",
+                "ponavljanje", "ponavljanje_dnevi", "serija_id", "opomnik_min"),
             tasks.map { t ->
                 val status = when {
                     t.deletedAt != null -> "izbrisan"
@@ -67,7 +68,8 @@ class CsvExporter(private val context: Context, private val db: AppDatabase) {
                     Format.iso(t.dueAt), if (t.dueHasTime) "da" else "ne", t.client ?: "",
                     photoNames[t.id]?.let { "slike/$it" } ?: "",
                     Format.iso(t.createdAt), Format.iso(t.updatedAt), Format.iso(t.completedAt),
-                    Format.iso(t.deletedAt), status, hours, t.calendarEventId ?: "")
+                    Format.iso(t.deletedAt), status, hours, t.calendarEventId ?: "",
+                    t.recurrenceType ?: "", t.recurrenceDays ?: "", t.seriesId ?: "", t.reminderMinutes ?: "")
             })
 
         // --- zgodovina

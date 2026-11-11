@@ -22,8 +22,8 @@ android {
         applicationId = "si.sluzbataski"
         minSdk = 26          // Android 8.0 – potrebno za java.time in adaptivne ikone
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.5"
+        versionCode = 7
+        versionName = "1.6"
     }
 
     buildTypes {

@@ -134,6 +134,7 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             try {
                 val r = vm.g.importer.import(uri)
                 vm.g.tasks.syncPendingCalendar()       // odprte taske z datumom vpiši v koledar
+                vm.g.tasks.rescheduleAllReminders()    // nastavi opomnike uvoženih taskov
                 WidgetUpdater.updateAll(context)
                 Toast.makeText(context,
                     "Uvoženo: ${r.tasks} taskov, ${r.shopping} nakupov, ${r.photos} slik, ${r.workplaces} novih delovnih mest" +

@@ -16,7 +16,9 @@ enum class TaskEventType(val label: String) {
     DELETED("Izbrisan"),
     RESTORED("Obnovljen"),
     PHOTO_CHANGED("Sprememba slike"),
-    MOVED_WORKPLACE("Premaknjen na drugo delovno mesto");
+    MOVED_WORKPLACE("Premaknjen na drugo delovno mesto"),
+    NEXT_OCCURRENCE("Ustvarjena naslednja ponovitev"),
+    REMINDER("Opomnik");
 
     companion object {
         fun fromName(name: String?): TaskEventType = entries.firstOrNull { it.name == name } ?: EDITED

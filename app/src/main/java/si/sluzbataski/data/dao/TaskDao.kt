@@ -47,6 +47,10 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE urgency = 'DATUM' AND dueAt IS NOT NULL AND calendarEventId IS NULL AND completedAt IS NULL AND deletedAt IS NULL")
     suspend fun getDatedWithoutEvent(): List<Task>
 
+    /** Odprti taski z opomnikom (za ponovno nastavitev alarmov po zagonu telefona). */
+    @Query("SELECT * FROM tasks WHERE reminderMinutes IS NOT NULL AND dueAt IS NOT NULL AND completedAt IS NULL AND deletedAt IS NULL")
+    suspend fun getWithReminder(): List<Task>
+
     /** ID-ji koledarskih dogodkov, ki so že povezani s kakim taskom. */
     @Query("SELECT calendarEventId FROM tasks WHERE calendarEventId IS NOT NULL")
     suspend fun getUsedEventIds(): List<Long>

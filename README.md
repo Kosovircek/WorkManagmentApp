@@ -13,6 +13,8 @@ Napisano v **Kotlinu** (Jetpack Compose, Room, Glance), vsa koda je podrobno kom
 | **Oba widgeta** | klik na ime delovnega mesta (⇄) preklopi na naslednje delovno mesto |
 | **Glavni zaslon** | isti seznam, razdeljen po skupinah; ▲▼ premik nujnosti, ✓ opravljeno (z razveljavitvijo) |
 | **Nov task / podrobnosti** | opis (tudi z glasom 🎤), nujnost ali datum (+ opcijska ura), naročnik s predlogi, slika iz kamere ali galerije, zgodovina vseh sprememb |
+| **Ponavljajoči taski** | stikalo 🔁 v obrazcu odpre podmeni: tedensko (več dni v tednu), mesečno (več dni v mesecu), letno (več datumov); ko task opraviš, se ustvari naslednja ponovitev |
+| **Opomniki** | pri taskih z datumom: ob roku, 5 min … 1 teden prej; obvestilo + vibriranje kot budilka, gumba *Opravljeno* in *Odloži 10 min* |
 | **Google Koledar** | taski z datumom se vpišejo v koledar **SluzbaTaski**; ob opravljenem dobijo "✔", ob izbrisu se odstranijo |
 | **Nakupi** | seznam po delovnih mestih, opcijska količina in trgovina, filter po trgovini, zgodovina kupljenega |
 | **Statistika** | prejeti/opravljeni, povprečni in mediani čas izvedbe, zamujeni, grafi skozi čas, po nujnosti, naročnikih, dnevih v tednu, trgovinah |
@@ -39,6 +41,12 @@ Iz ukazne vrstice: `./gradlew assembleDebug` (potrebuješ JDK 17 in Android SDK 
    (Namesto tega lahko izbereš katerikoli drug koledar.)
 2. **Delovna mesta:** ob prvem zagonu obstaja "Služba". V *Nastavitvah* ga preimenuj in dodaj ostala.
 3. **Widgeta:** v aplikaciji *Meni → Dodaj widget na domači zaslon* in pritisni *+ Hitri vnos* / *+ Seznam taskov*. Ali ročno: dolg pritisk na domači zaslon → *Pripomočki* → "Službeni taski" (na Xiaomiju se pomakni navzdol pod sistemske pripomočke).
+
+## Opomniki na Xiaomi telefonih
+
+MIUI/HyperOS rad ustavlja aplikacije v ozadju. Da opomniki zanesljivo delujejo (tudi po ponovnem zagonu):
+*Nastavitve telefona → Aplikacije → Službeni taski* → vklopi **Samodejni zagon (Autostart)**,
+pri **Varčevanje z baterijo** izberi **Brez omejitev** in v **Obvestilih** dovoli obvestila.
 
 ## Prenos na nov telefon
 
