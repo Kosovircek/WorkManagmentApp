@@ -17,7 +17,7 @@ Napisano v **Kotlinu** (Jetpack Compose, Room, Glance), vsa koda je podrobno kom
 | **Nakupi** | seznam po delovnih mestih, opcijska količina in trgovina, filter po trgovini, zgodovina kupljenega |
 | **Statistika** | prejeti/opravljeni, povprečni in mediani čas izvedbe, zamujeni, grafi skozi čas, po nujnosti, naročnikih, dnevih v tednu, trgovinah |
 | **Arhiv** | vsi opravljeni in izbrisani taski z iskanjem; vse je mogoče ponovno odpreti ali obnoviti |
-| **Nastavitve** | gumba za postavitev widgetov na domači zaslon, delovna mesta (dodaj, preimenuj, barva, arhiviraj), izbira koledarja, **izvoz vseh podatkov v CSV** (s slikami v podmapi `slike/`) |
+| **Nastavitve** | gumba za postavitev widgetov na domači zaslon, delovna mesta (dodaj, preimenuj, barva, arhiviraj), izbira koledarja, **izvoz vseh podatkov v CSV** (s slikami v podmapi `slike/`) in **uvoz** izvožene mape (prenos na nov telefon), tema Sistemska/Svetla/Temna |
 
 Nič se nikoli ne izbriše iz baze: opravljeni taski, izbrisani taski, kupljene stvari in vsaka
 sprememba ostanejo shranjeni s časi (ustvarjeno, spremenjeno, opravljeno, izbrisano).
@@ -39,6 +39,14 @@ Iz ukazne vrstice: `./gradlew assembleDebug` (potrebuješ JDK 17 in Android SDK 
    (Namesto tega lahko izbereš katerikoli drug koledar.)
 2. **Delovna mesta:** ob prvem zagonu obstaja "Služba". V *Nastavitvah* ga preimenuj in dodaj ostala.
 3. **Widgeta:** v aplikaciji *Meni → Dodaj widget na domači zaslon* in pritisni *+ Hitri vnos* / *+ Seznam taskov*. Ali ročno: dolg pritisk na domači zaslon → *Pripomočki* → "Službeni taski" (na Xiaomiju se pomakni navzdol pod sistemske pripomočke).
+
+## Prenos na nov telefon
+
+1. Na starem telefonu: *Nastavitve → Izvozi v CSV* → izberi mapo (npr. Google Drive ali Prenosi).
+2. Mapo `SluzbaTaski_<datum>` prenesi na nov telefon (ali jo odpri neposredno z Google Drive).
+3. Na novem telefonu: *Nastavitve → Uvozi iz izvožene mape* → izberi to mapo.
+
+Uvoz ničesar ne briše; ponoven uvoz iste mape ne podvoji taskov.
 
 ## Dokumentacija
 

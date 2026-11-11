@@ -22,6 +22,8 @@ import java.util.Locale
  *   - nakupi.csv          (vse postavke, tudi kupljene in izbrisane)
  *   - slike/task_<id>.jpg (kopije vseh slik taskov; ime je v stolpcu "slika" v taski.csv)
  *
+ * Izvoženo mapo je mogoče na drugem telefonu spet uvoziti – glej [CsvImporter].
+ *
  * Format: ločilo ";" in UTF-8 z BOM – tako jih Excel v slovenskih nastavitvah odpre
  * pravilno (s šumniki in v ločenih stolpcih).
  */
@@ -42,8 +44,9 @@ class CsvExporter(private val context: Context, private val db: AppDatabase) {
 
         // --- delovna mesta
         rows += write(folder, "delovna_mesta.csv",
-            listOf("id", "ime", "ustvarjeno", "arhivirano"),
-            workplaces.map { listOf(it.id, it.name, Format.iso(it.createdAt), Format.iso(it.archivedAt)) })
+            listOf("id", "ime", "ustvarjeno", "arhivirano", "barva"),
+            workplaces.map { listOf(it.id, it.name, Format.iso(it.createdAt), Format.iso(it.archivedAt),
+                "#%08X".format(it.colorArgb)) })
 
         // --- slike: kopiramo jih v podmapo "slike", vsaka dobi ime task_<id>.jpg
         val tasks = db.taskDao().getAll()

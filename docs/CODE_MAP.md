@@ -29,7 +29,8 @@ si/sluzbataski/
 │
 ├── calendar/CalendarSync.kt   vpis/posodobitev/brisanje dogodkov v Google koledarju
 ├── photo/PhotoStorage.kt      datoteke slik, FileProvider za kamero, nalaganje sličic
-├── export/CsvExporter.kt      izvoz vseh tabel v CSV (; ločilo, UTF-8 BOM za Excel)
+├── export/CsvExporter.kt      izvoz vseh tabel v CSV (; ločilo, UTF-8 BOM za Excel) + slike
+├── export/CsvImporter.kt      uvoz izvožene mape (združevanje brez podvajanja)
 ├── stats/StatsCalculator.kt   izračun vseh številk in serij za statistiko (čisti Kotlin)
 ├── util/Format.kt             slovensko oblikovanje datumov, starosti, trajanj
 │
@@ -37,7 +38,8 @@ si/sluzbataski/
 │   ├── QuickAddWidget.kt      widget za hitri vnos (+ Receiver)
 │   ├── TaskListWidget.kt      widget s seznamom taskov (+ Receiver)
 │   ├── WidgetActions.kt       dejanja: preklop mesta, opravljeno; Intenti za odpiranje zaslonov
-│   ├── WidgetUi.kt            skupni gradniki (glava, gumbi, barve)
+│   ├── WidgetUi.kt            skupni gradniki (glava, gumbi, svetle/temne barve)
+│   ├── WidgetData.kt          živo opazovanje podatkov za widgeta
 │   └── WidgetUpdater.kt       osveži oba widgeta
 │
 └── ui/
@@ -70,4 +72,5 @@ Viri (`app/src/main/res/`): `xml/*_widget_info.xml` (velikost widgetov), `xml/fi
 | spremeniti videz widgeta | `widget/QuickAddWidget.kt`, `widget/TaskListWidget.kt`, `widget/WidgetUi.kt` |
 | spremeniti ime koledarja | `CalendarSync.CALENDAR_NAME` |
 | dodati statistiko | `stats/StatsCalculator.kt` (izračun) + `ui/stats/StatsActivity.kt` (prikaz) |
-| dodati stolpec v CSV | `export/CsvExporter.kt` |
+| dodati stolpec v CSV | `export/CsvExporter.kt` in `export/CsvImporter.kt` |
+| spremeniti barve teme | `ui/theme/Theme.kt` (aplikacija), `WidgetColors` v `widget/WidgetUi.kt` (widgeti) |

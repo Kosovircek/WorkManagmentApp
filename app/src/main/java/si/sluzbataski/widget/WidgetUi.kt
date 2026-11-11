@@ -29,20 +29,31 @@ import si.sluzbataski.data.entity.Workplace
  * vendar z omejenim naborom elementov: Box, Row, Column, Text, Image, LazyColumn ...).
  */
 
+/**
+ * Barve widgetov. Večina ima svetlo (day) in temno (night) različico – widget sledi
+ * temnemu načinu telefona samodejno (Android izbere pravo barvo).
+ */
 object WidgetColors {
-    val background = Color(0xF2FFFFFF)
-    val surface = Color(0xFFF1F3F8)
-    val text = Color(0xFF1B1B1F)
-    val textMuted = Color(0xFF6B6F7A)
-    val accent = Color(0xFF3949AB)
-    val danger = Color(0xFFD32F2F)
+    val background = DayNight(day = Color(0xF2FFFFFF), night = Color(0xF21E1F24))
+    val surface = DayNight(day = Color(0xFFF1F3F8), night = Color(0xFF2C2E35))
+    val text = DayNight(day = Color(0xFF1B1B1F), night = Color(0xFFE6E6EA))
+    val textMuted = DayNight(day = Color(0xFF6B6F7A), night = Color(0xFFA5A8B3))
+    val danger = DayNight(day = Color(0xFFD32F2F), night = Color(0xFFFF6B66))
+    /** Poudarek (indigo) – dovolj kontrasten na obeh ozadjih. */
+    val accent = Color(0xFF5C6BC0)
 }
 
-fun textStyle(size: Int = 14, color: Color = WidgetColors.text, bold: Boolean = false) = TextStyle(
-    color = ColorProvider(color),
+private fun DayNight(day: Color, night: Color): ColorProvider =
+    androidx.glance.color.ColorProvider(day = day, night = night)
+
+fun textStyle(size: Int = 14, color: ColorProvider = WidgetColors.text, bold: Boolean = false) = TextStyle(
+    color = color,
     fontSize = size.sp,
     fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
 )
+
+/** Različica za fiksno barvo (enaka v svetlem in temnem načinu). */
+fun textStyle(size: Int, color: Color, bold: Boolean = false) = textStyle(size, ColorProvider(color), bold)
 
 /**
  * Glava widgeta: barvna pika + ime delovnega mesta + gumb "⇄".
