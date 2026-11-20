@@ -79,7 +79,8 @@ class TaskFormState(
     val originalPhotoPath: String? = null,
     recurrenceType: String? = null,
     recurrenceDays: String = "",
-    reminderMinutes: Int? = null,
+    /** Nov task z datumom ima privzeto opomnik "Ob roku" (zazvoni kot budilka). */
+    reminderMinutes: Int? = 0,
 ) {
     var description by mutableStateOf(description)
     var urgency by mutableStateOf(urgency)

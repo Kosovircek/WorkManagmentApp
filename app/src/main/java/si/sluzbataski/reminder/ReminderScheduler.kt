@@ -23,7 +23,8 @@ import java.time.ZoneId
  *
  * Uporabljamo AlarmManager.setAlarmClock – to je enak mehanizem kot pri budilki:
  * sproži se točno, tudi ko je telefon v varčevalnem načinu, in v statusni vrstici
- * pokaže ikono budilke. Ob sprožitvi [ReminderReceiver] pokaže obvestilo in vibrira.
+ * pokaže ikono budilke. Ob sprožitvi [ReminderReceiver] zažene budilko ([AlarmService]),
+ * ki zvoni, dokler je uporabnik ne potrdi.
  *
  * Alarmi ne preživijo ponovnega zagona telefona, zato jih [BootReceiver] nastavi znova.
  */
@@ -61,6 +62,7 @@ object ReminderScheduler {
     /** Nastavi (ali prekliče) alarm glede na trenutno stanje taska. */
     fun schedule(context: Context, task: Task) {
         cancel(context, task.id)
+        if (!task.isOpen) AlarmService.silence(task.id)   // task opravljen/izbrisan med zvonjenjem
         if (!task.isOpen || !task.hasDate) return
         val at = triggerAt(task) ?: return
         if (at <= System.currentTimeMillis()) return
@@ -112,5 +114,6 @@ object ReminderScheduler {
             )
         }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        AlarmService.createChannel(context)
     }
 }

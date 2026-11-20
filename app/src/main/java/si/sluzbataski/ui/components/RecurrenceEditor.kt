@@ -33,6 +33,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -128,8 +130,8 @@ fun RecurrenceEditor(state: TaskFormState, onEnable: () -> Unit) {
 }
 
 /**
- * Izbira opomnika (Brez, Ob roku, 5 min … 1 teden prej). Ob prvi izbiri na Android 13+
- * zaprosi za dovoljenje za obvestila.
+ * Izbira opomnika (Brez, Ob roku, 5 min … 1 teden prej). Na Android 13+ zaprosi za
+ * dovoljenje za obvestila (brez njega budilka ne more zazvoniti).
  */
 @Composable
 fun ReminderPicker(state: TaskFormState) {
@@ -141,6 +143,15 @@ fun ReminderPicker(state: TaskFormState) {
         open = false
         if (minutes != null && Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    // Opomnik je privzeto vklopljen, zato za dovoljenje vprašamo že ob prikazu (enkrat na obrazec).
+    var asked by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!asked && state.reminderMinutes != null && Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            asked = true
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }

@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.callbackFlow
  * Majhne nastavitve aplikacije (SharedPreferences):
  *  - katero delovno mesto je trenutno aktivno,
  *  - ročno izbran koledar (če uporabnik ne uporablja privzetega "SluzbaTaski"),
- *  - tema (sistemska / svetla / temna).
+ *  - tema (sistemska / svetla / temna),
+ *  - ali opomniki zvonijo kot budilka.
  *
  * Do teh nastavitev dostopajo tudi widgeti, zato so v SharedPreferences
  * (hitro, sinhrono branje) in ne v bazi.
@@ -33,6 +34,14 @@ class SettingsStore(context: Context) {
     var calendarEnabled: Boolean
         get() = prefs.getBoolean(KEY_CALENDAR_ENABLED, true)
         set(value) = prefs.edit().putBoolean(KEY_CALENDAR_ENABLED, value).apply()
+
+    /**
+     * Ali naj opomnik zvoni kot budilka (zvok + celozaslonsko okno, dokler ga ne potrdiš).
+     * Če je izklopljeno, je opomnik navadno obvestilo z vibriranjem.
+     */
+    var alarmStyleReminders: Boolean
+        get() = prefs.getBoolean(KEY_ALARM_STYLE, true)
+        set(value) = prefs.edit().putBoolean(KEY_ALARM_STYLE, value).apply()
 
     /** Tema aplikacije: [THEME_SYSTEM], [THEME_LIGHT] ali [THEME_DARK]. */
     var themeMode: Int
@@ -63,6 +72,7 @@ class SettingsStore(context: Context) {
         const val THEME_SYSTEM = 0
         const val THEME_LIGHT = 1
         const val THEME_DARK = 2
+        private const val KEY_ALARM_STYLE = "alarm_style_reminders"
         private const val KEY_THEME = "theme_mode"
         private const val KEY_ACTIVE_WP = "active_workplace_id"
         private const val KEY_CALENDAR_ID = "calendar_id"
