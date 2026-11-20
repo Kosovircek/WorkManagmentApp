@@ -195,8 +195,8 @@ opravljenega, `TaskRepository.complete` izračuna naslednji ustrezen dan (po rok
 v preteklosti) in ustvari nov task z enakimi podatki (brez slike), povezan prek `seriesId`.
 
 **Opomniki** (`reminder/`): `ReminderScheduler` nastavi `AlarmManager.setAlarmClock` (točno, kot
-budilka) `reminderMinutes` pred rokom (pri tasku brez ure ob 9:00); nov task z datumom ima privzeto
-opomnik *Ob roku*. `ReminderReceiver` ob sprožitvi zažene **budilko** `AlarmService` (storitev v
+budilka) `reminderMinutes` pred rokom. Opomnik je privzeto izklopljen; uporabnik ga izbere s
+klikom (Ob roku, 10, 30, 45 min, 1 h prej) in samo pri tasku z uro (`TaskFormState.effectiveReminder`). `ReminderReceiver` ob sprožitvi zažene **budilko** `AlarmService` (storitev v
 ospredju): predvaja zvok budilke telefona v zanki, vibrira in prek celozaslonskega obvestila odpre
 `AlarmActivity` (tudi na zaklenjenem zaslonu) z gumbi *Sprejeto*, *Opravljeno* in *Odloži 10 min*.
 Zvoni, dokler uporabnik ne pritisne gumba; po 10 minutah brez odziva utihne in se sama odloži za

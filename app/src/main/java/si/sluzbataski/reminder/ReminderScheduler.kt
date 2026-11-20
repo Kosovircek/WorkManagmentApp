@@ -35,15 +35,18 @@ object ReminderScheduler {
     /** Možnosti opomnika za izbirnik (minute pred rokom -> opis). */
     val OPTIONS: List<Pair<Int, String>> = listOf(
         0 to "Ob roku",
-        5 to "5 min prej",
-        15 to "15 min prej",
+        10 to "10 min prej",
         30 to "30 min prej",
+        45 to "45 min prej",
         60 to "1 uro prej",
-        120 to "2 uri prej",
-        24 * 60 to "1 dan prej",
-        2 * 24 * 60 to "2 dni prej",
-        7 * 24 * 60 to "1 teden prej",
     )
+
+    /** Kratek napis za gumb izbire (npr. "10 min", "1 h"). */
+    fun shortLabel(minutes: Int): String = when {
+        minutes == 0 -> "Ob roku"
+        minutes % 60 == 0 -> "${minutes / 60} h"
+        else -> "$minutes min"
+    }
 
     fun label(minutes: Int?): String =
         if (minutes == null) "Brez opomnika" else OPTIONS.firstOrNull { it.first == minutes }?.second ?: "$minutes min prej"
