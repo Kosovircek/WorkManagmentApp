@@ -16,11 +16,63 @@ import java.util.Locale
  *  - [WEEKLY]  "1,3,5"     ponedeljek, sreda, petek (1 = pon ... 7 = ned)
  *  - [MONTHLY] "1,15,31"   1., 15. in 31. v mesecu (krajši meseci: zadnji dan)
  *  - [YEARLY]  "0315,1224" 15. marec in 24. december (MMdd)
+ *  - [INTERVAL] "10"       vsakih 10 dni od roka prejšnje ponovitve (po meri)
  */
 object Recurrence {
     const val WEEKLY = "WEEKLY"
     const val MONTHLY = "MONTHLY"
     const val YEARLY = "YEARLY"
+    /** Po meri: vsakih N dni (N je edina vrednost v recurrenceDays). */
+    const val INTERVAL = "INTERVAL"
+    /** Največji dovoljen razmik pri [INTERVAL] (10 let). */
+    const val MAX_INTERVAL = 3650
+
+    /** Razmik v dneh pri [INTERVAL] ali null, če ni veljaven. */
+    fun interval(days: String?): Int? = parse(days).firstOrNull()?.takeIf { it in 1..MAX_INTERVAL }
+
+    /** Ali pravilo ima vse potrebne podatke (vsaj en dan oz. veljaven razmik). */
+    fun isValid(type: String?, days: String?): Boolean = when (type) {
+        null -> false
+        INTERVAL -> interval(days) != null
+        else -> parse(days).isNotEmpty()
+    }
+
+    /**
+     * Privzeta izbira ob preklopu vrste, da je pravilo takoj veljavno:
+     * dan v tednu / dan v mesecu / datum izhodiščnega dne, pri INTERVAL pa 2 dni.
+     */
+    fun defaultDays(type: String, base: LocalDate): String = when (type) {
+        WEEKLY -> base.dayOfWeek.value.toString()
+        MONTHLY -> base.dayOfMonth.toString()
+        YEARLY -> (base.monthValue * 100 + base.dayOfMonth).toString()
+        INTERVAL -> "2"
+        else -> ""
+    }
+
+    /** Zapis dni za shranjevanje (urejen, brez podvojenih; pri INTERVAL samo razmik). */
+    fun normalize(type: String?, days: String?): String? = when {
+        !isValid(type, days) -> null
+        type == INTERVAL -> interval(days).toString()
+        else -> join(parse(days))
+    }
+
+    /**
+     * Datum naslednje ponovitve po opravljeni, ki je imela rok [due]; nikoli pred [today].
+     * Pri [INTERVAL] se šteje od roka (ne od dneva, ko si task opravil), da se ritem ne zamika;
+     * če si zamudil več ponovitev, se preskoči na prvo od danes naprej.
+     */
+    fun nextAfterDone(type: String?, days: String?, due: LocalDate, today: LocalDate): LocalDate? {
+        if (type == INTERVAL) {
+            val n = interval(days) ?: return null
+            var d = due.plusDays(n.toLong())
+            if (d.isBefore(today)) {
+                val missed = java.time.temporal.ChronoUnit.DAYS.between(d, today)
+                d = d.plusDays(((missed + n - 1) / n) * n)
+            }
+            return d
+        }
+        return next(type, days, maxOf(due, today.minusDays(1)))
+    }
 
     private val sl = Locale("sl", "SI")
 
@@ -47,6 +99,7 @@ object Recurrence {
      */
     fun next(type: String?, days: String?, after: LocalDate): LocalDate? {
         if (type == null) return null
+        if (type == INTERVAL) return interval(days)?.let { after.plusDays(it.toLong()) }
         val values = parse(days)
         if (values.isEmpty()) return null
         var d = after.plusDays(1)
@@ -65,6 +118,14 @@ object Recurrence {
             WEEKLY -> "vsak " + v.joinToString(", ") { DayOfWeek.of(it).getDisplayName(TextStyle.SHORT, sl) }
             MONTHLY -> "vsak mesec " + v.joinToString(", ") { "$it." }
             YEARLY -> "vsako leto " + v.joinToString(", ") { "${it % 100}. ${it / 100}." }
+            INTERVAL -> interval(days)?.let { n ->
+                when {
+                    n == 1 -> "vsak dan"
+                    n % 100 == 2 -> "vsaka $n dneva"
+                    n % 100 == 3 || n % 100 == 4 -> "vsake $n dni"
+                    else -> "vsakih $n dni"
+                }
+            } ?: ""
             else -> ""
         }
     }

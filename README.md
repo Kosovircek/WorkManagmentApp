@@ -13,7 +13,7 @@ Napisano v **Kotlinu** (Jetpack Compose, Room, Glance), vsa koda je podrobno kom
 | **Oba widgeta** | klik na ime delovnega mesta (⇄) preklopi na naslednje delovno mesto |
 | **Glavni zaslon** | isti seznam, razdeljen po skupinah; ▲▼ premik nujnosti, ✓ opravljeno (z razveljavitvijo) |
 | **Nov task / podrobnosti** | opis (tudi z glasom 🎤), nujnost ali datum (+ opcijska ura), naročnik s predlogi, slika iz kamere ali galerije, zgodovina vseh sprememb |
-| **Ponavljajoči taski** | stikalo 🔁 v obrazcu odpre podmeni: tedensko (več dni v tednu), mesečno (več dni v mesecu), letno (več datumov); ko task opraviš, se ustvari naslednja ponovitev |
+| **Ponavljajoči taski** | stikalo 🔁 v obrazcu odpre podmeni: tedensko (več dni v tednu), mesečno (več dni v mesecu), letno (več datumov) ali po meri (vsakih N dni); ko task opraviš, se ustvari naslednja ponovitev |
 | **Opomniki** | pri taskih z datumom in uro: izbereš ga s klikom (*Ob roku*, 10, 30, 45 min, 1 h prej; samo pri tasku z uro, privzeto brez); **zvoni kot budilka** (zvok + okno čez cel zaslon, tudi na zaklenjenem zaslonu), dokler ne pritisneš *Sprejeto*, *Opravljeno* ali *Odloži 10 min* |
 | **Google Koledar** | taski z datumom se vpišejo v koledar **SluzbaTaski**; ob opravljenem dobijo "✔", ob izbrisu se odstranijo |
 | **Nakupi** | seznam po delovnih mestih, opcijska količina in trgovina, filter po trgovini, zgodovina kupljenega |

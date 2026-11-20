@@ -193,6 +193,11 @@ telefon z istim Google računom) in ga prevzame, namesto da bi ga podvojila.
 **Ponavljanje** (`data/repo/Recurrence.kt`): ponavljajoč task ima vedno datum. Ko ga označiš kot
 opravljenega, `TaskRepository.complete` izračuna naslednji ustrezen dan (po roku trenutnega, a ne
 v preteklosti) in ustvari nov task z enakimi podatki (brez slike), povezan prek `seriesId`.
+Nova ponovitev dobi svoj dogodek v Google Koledarju in, če ga je imel prejšnji, enak opomnik (budilko).
+Vrste: tedensko, mesečno, letno (izbrani dnevi) in **po meri – vsakih N dni** (`INTERVAL`, v
+`recurrenceDays` je samo N). Pri "po meri" se šteje od roka prejšnje ponovitve, ne od dneva, ko si
+task opravil, tako da se ritem ne zamika (`Recurrence.nextAfterDone`). Ponavljanje je v CSV v
+stolpcih `ponavljanje` in `ponavljanje_dnevi`.
 
 **Opomniki** (`reminder/`): `ReminderScheduler` nastavi `AlarmManager.setAlarmClock` (točno, kot
 budilka) `reminderMinutes` pred rokom. Opomnik je privzeto izklopljen; uporabnik ga izbere s

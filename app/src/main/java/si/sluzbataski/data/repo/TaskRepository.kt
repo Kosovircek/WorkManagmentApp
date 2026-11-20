@@ -70,10 +70,11 @@ class TaskRepository(
     ): Long {
         val now = System.currentTimeMillis()
         val dated = urgency == Urgency.DATUM
-        val recurring = dated && recurrenceType != null && Recurrence.parse(recurrenceDays).isNotEmpty()
+        val recurring = dated && Recurrence.isValid(recurrenceType, recurrenceDays)
         // Ponavljajoč task brez izbranega datuma: prva ponovitev je prvi ustrezen dan od danes naprej.
         val firstDue = if (dated && dueAt == null && recurring)
-            Recurrence.next(recurrenceType, recurrenceDays, LocalDate.now(zone).minusDays(1))
+            (if (recurrenceType == Recurrence.INTERVAL) LocalDate.now(zone)
+            else Recurrence.next(recurrenceType, recurrenceDays, LocalDate.now(zone).minusDays(1)))
                 ?.atStartOfDay(zone)?.toInstant()?.toEpochMilli()
         else dueAt
         val task = Task(
@@ -87,7 +88,7 @@ class TaskRepository(
             createdAt = now,
             updatedAt = now,
             recurrenceType = if (recurring) recurrenceType else null,
-            recurrenceDays = if (recurring) Recurrence.join(Recurrence.parse(recurrenceDays)) else null,
+            recurrenceDays = if (recurring) Recurrence.normalize(recurrenceType, recurrenceDays) else null,
             reminderMinutes = if (dated) reminderMinutes else null,
         )
         val id = dao.insert(task)
@@ -104,7 +105,7 @@ class TaskRepository(
     suspend fun update(edited: Task) {
         val old = dao.get(edited.id) ?: return
         val dated = edited.urgency == Urgency.DATUM
-        val recurring = dated && edited.recurrenceType != null && Recurrence.parse(edited.recurrenceDays).isNotEmpty()
+        val recurring = dated && Recurrence.isValid(edited.recurrenceType, edited.recurrenceDays)
         val clean = edited.copy(
             description = edited.description.trim(),
             client = edited.client?.trim()?.ifBlank { null },
@@ -112,7 +113,7 @@ class TaskRepository(
             dueHasTime = dated && edited.dueHasTime,
             updatedAt = System.currentTimeMillis(),
             recurrenceType = if (recurring) edited.recurrenceType else null,
-            recurrenceDays = if (recurring) Recurrence.join(Recurrence.parse(edited.recurrenceDays)) else null,
+            recurrenceDays = if (recurring) Recurrence.normalize(edited.recurrenceType, edited.recurrenceDays) else null,
             reminderMinutes = if (dated) edited.reminderMinutes else null,
         )
         dao.update(clean)
@@ -174,9 +175,8 @@ class TaskRepository(
     private suspend fun createNextOccurrence(done: Task) {
         val due = done.dueAt ?: return
         val dueZdt = Instant.ofEpochMilli(due).atZone(zone)
-        val yesterday = LocalDate.now(zone).minusDays(1)
-        val after = maxOf(dueZdt.toLocalDate(), yesterday)
-        val nextDate = Recurrence.next(done.recurrenceType, done.recurrenceDays, after) ?: return
+        val nextDate = Recurrence.nextAfterDone(done.recurrenceType, done.recurrenceDays,
+            dueZdt.toLocalDate(), LocalDate.now(zone)) ?: return
         val now = System.currentTimeMillis()
         val next = done.copy(
             id = 0,
