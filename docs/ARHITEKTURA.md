@@ -195,9 +195,14 @@ opravljenega, `TaskRepository.complete` izračuna naslednji ustrezen dan (po rok
 v preteklosti) in ustvari nov task z enakimi podatki (brez slike), povezan prek `seriesId`.
 
 **Opomniki** (`reminder/`): `ReminderScheduler` nastavi `AlarmManager.setAlarmClock` (točno, kot
-budilka) `reminderMinutes` pred rokom (pri tasku brez ure ob 9:00). `ReminderReceiver` pokaže
-obvestilo z gumboma *Opravljeno* in *Odloži 10 min* ter vibrira. Alarm se nastavi/prekliče ob vsaki
-spremembi taska, `BootReceiver` pa jih po ponovnem zagonu telefona nastavi znova.
+budilka) `reminderMinutes` pred rokom. Opomnik je privzeto izklopljen; uporabnik ga izbere s
+klikom (Ob roku, 10, 30, 45 min, 1 h prej) in samo pri tasku z uro (`TaskFormState.effectiveReminder`). `ReminderReceiver` ob sprožitvi zažene **budilko** `AlarmService` (storitev v
+ospredju): predvaja zvok budilke telefona v zanki, vibrira in prek celozaslonskega obvestila odpre
+`AlarmActivity` (tudi na zaklenjenem zaslonu) z gumbi *Sprejeto*, *Opravljeno* in *Odloži 10 min*.
+Zvoni, dokler uporabnik ne pritisne gumba; po 10 minutah brez odziva utihne in se sama odloži za
+10 minut. Če je budilka v Nastavitvah izklopljena ali je Android ne dovoli zagnati, se pokaže navadno
+obvestilo z vibriranjem. Alarm se nastavi/prekliče ob vsaki spremembi taska (opravljen task med
+zvonjenjem budilko utiša), `BootReceiver` pa jih po ponovnem zagonu telefona nastavi znova.
 
 ```mermaid
 sequenceDiagram
@@ -205,13 +210,15 @@ sequenceDiagram
     participant S as ReminderScheduler
     participant A as AlarmManager
     participant RR as ReminderReceiver
+    participant AS as AlarmService / AlarmActivity
     actor U as Uporabnik
     R->>S: schedule(task) ob vsaki spremembi
     S->>A: setAlarmClock(rok − opomnik)
     A-->>RR: ob času opomnika
-    RR->>U: obvestilo + vibriranje
-    U->>RR: "Opravljeno" / "Odloži 10 min"
-    RR->>R: complete(id)  (ponavljajoč → nova ponovitev)
+    RR->>AS: start(task)
+    AS->>U: zvonjenje + vibriranje + okno čez cel zaslon (v zanki)
+    U->>AS: "Sprejeto" / "Opravljeno" / "Odloži 10 min"
+    AS->>R: complete(id)  (ponavljajoč → nova ponovitev)
 ```
 
 ## 9. Spreminjanje baze v prihodnosti

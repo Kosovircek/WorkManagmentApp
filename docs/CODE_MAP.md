@@ -30,7 +30,9 @@ si/sluzbataski/
 │
 ├── reminder/
 │   ├── ReminderScheduler.kt   nastavljanje alarmov opomnikov, kanal obvestil, možnosti opomnika
-│   ├── ReminderReceiver.kt    obvestilo + vibriranje; gumba Opravljeno / Odloži
+│   ├── ReminderReceiver.kt    sprožitev opomnika (zažene budilko ali navadno obvestilo); gumbi Sprejeto / Opravljeno / Odloži
+│   ├── AlarmService.kt        budilka: zvok v zanki, vibriranje, celozaslonsko obvestilo, dokler je ne potrdiš
+│   ├── AlarmActivity.kt       celozaslonsko okno budilke (tudi na zaklenjenem zaslonu)
 │   └── BootReceiver.kt        po zagonu telefona znova nastavi alarme
 ├── calendar/CalendarSync.kt   vpis/posodobitev/brisanje dogodkov v Google koledarju
 ├── photo/PhotoStorage.kt      datoteke slik, FileProvider za kamero, nalaganje sličic
@@ -77,7 +79,8 @@ Viri (`app/src/main/res/`): `xml/*_widget_info.xml` (velikost widgetov), `xml/fi
 | dodati polje tasku | `Task.kt` → `AppDatabase` (verzija + migracija) → `TaskForm.kt` → `CsvExporter.kt` |
 | spremeniti videz widgeta | `widget/QuickAddWidget.kt`, `widget/TaskListWidget.kt`, `widget/WidgetUi.kt` |
 | dodati možnost opomnika | `ReminderScheduler.OPTIONS` |
-| spremeniti vibriranje opomnika | `ReminderReceiver.VIBRATION` |
+| spremeniti vibriranje opomnika | `AlarmService.VIBRATION` (budilka), `ReminderReceiver.VIBRATION` (navadno obvestilo) |
+| spremeniti, kako dolgo budilka zvoni | `AlarmService.RING_TIMEOUT_MS`, `AlarmService.AUTO_SNOOZE_MIN` |
 | spremeniti ime koledarja | `CalendarSync.CALENDAR_NAME` |
 | dodati statistiko | `stats/StatsCalculator.kt` (izračun) + `ui/stats/StatsActivity.kt` (prikaz) |
 | dodati stolpec v CSV | `export/CsvExporter.kt` in `export/CsvImporter.kt` |

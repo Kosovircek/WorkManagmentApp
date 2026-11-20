@@ -23,7 +23,8 @@ import java.time.ZoneId
  *
  * Uporabljamo AlarmManager.setAlarmClock – to je enak mehanizem kot pri budilki:
  * sproži se točno, tudi ko je telefon v varčevalnem načinu, in v statusni vrstici
- * pokaže ikono budilke. Ob sprožitvi [ReminderReceiver] pokaže obvestilo in vibrira.
+ * pokaže ikono budilke. Ob sprožitvi [ReminderReceiver] zažene budilko ([AlarmService]),
+ * ki zvoni, dokler je uporabnik ne potrdi.
  *
  * Alarmi ne preživijo ponovnega zagona telefona, zato jih [BootReceiver] nastavi znova.
  */
@@ -34,15 +35,18 @@ object ReminderScheduler {
     /** Možnosti opomnika za izbirnik (minute pred rokom -> opis). */
     val OPTIONS: List<Pair<Int, String>> = listOf(
         0 to "Ob roku",
-        5 to "5 min prej",
-        15 to "15 min prej",
+        10 to "10 min prej",
         30 to "30 min prej",
+        45 to "45 min prej",
         60 to "1 uro prej",
-        120 to "2 uri prej",
-        24 * 60 to "1 dan prej",
-        2 * 24 * 60 to "2 dni prej",
-        7 * 24 * 60 to "1 teden prej",
     )
+
+    /** Kratek napis za gumb izbire (npr. "10 min", "1 h"). */
+    fun shortLabel(minutes: Int): String = when {
+        minutes == 0 -> "Ob roku"
+        minutes % 60 == 0 -> "${minutes / 60} h"
+        else -> "$minutes min"
+    }
 
     fun label(minutes: Int?): String =
         if (minutes == null) "Brez opomnika" else OPTIONS.firstOrNull { it.first == minutes }?.second ?: "$minutes min prej"
@@ -61,6 +65,7 @@ object ReminderScheduler {
     /** Nastavi (ali prekliče) alarm glede na trenutno stanje taska. */
     fun schedule(context: Context, task: Task) {
         cancel(context, task.id)
+        if (!task.isOpen) AlarmService.silence(task.id)   // task opravljen/izbrisan med zvonjenjem
         if (!task.isOpen || !task.hasDate) return
         val at = triggerAt(task) ?: return
         if (at <= System.currentTimeMillis()) return
@@ -112,5 +117,6 @@ object ReminderScheduler {
             )
         }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        AlarmService.createChannel(context)
     }
 }

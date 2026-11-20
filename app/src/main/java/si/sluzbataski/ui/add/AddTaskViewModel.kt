@@ -46,7 +46,7 @@ class AddTaskViewModel(app: Application) : AndroidViewModel(app) {
                 photoPath = state.photoPath,
                 recurrenceType = if (state.hasRecurrence) state.recurrenceType else null,
                 recurrenceDays = state.recurrenceDays,
-                reminderMinutes = state.reminderMinutes,
+                reminderMinutes = state.effectiveReminder,
             )
             onSaved()
         }

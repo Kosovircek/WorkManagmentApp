@@ -1,8 +1,15 @@
 package si.sluzbataski.ui.settings
 
+import android.Manifest
+import android.app.AlarmManager
 import android.app.Application
+import android.app.NotificationManager
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -63,7 +70,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -72,6 +82,7 @@ import kotlinx.coroutines.launch
 import si.sluzbataski.AppGraph
 import si.sluzbataski.calendar.CalendarSync
 import si.sluzbataski.data.entity.Workplace
+import si.sluzbataski.reminder.AlarmService
 import si.sluzbataski.ui.components.CALENDAR_PERMISSIONS
 import si.sluzbataski.ui.components.ColorDot
 import si.sluzbataski.ui.theme.SluzbaTaskiTheme
@@ -85,6 +96,7 @@ import si.sluzbataski.widget.requestPinWidget
  *  1. Delovna mesta – dodaj, preimenuj, barva, arhiviraj/obnovi
  *  2. Widgeti – postavitev na domači zaslon z enim klikom
  *  3. Videz (tema) in Google koledar – vklop, dovoljenje, izbira koledarja
+ *  3b. Opomniki kot budilka – vklop, preizkus, potrebna dovoljenja
  *  4. Izvoz baze v CSV in uvoz izvožene mape (prenos na drug telefon)
  */
 class SettingsActivity : ComponentActivity() {
@@ -197,6 +209,9 @@ private fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 
             HorizontalDivider()
             CalendarSection(vm.g.calendar, vm.g)
+
+            HorizontalDivider()
+            AlarmSection(vm.g.settings)
 
             HorizontalDivider()
             // ================= Izvoz
@@ -329,6 +344,76 @@ private fun CalendarSection(calendar: CalendarSync, g: AppGraph) {
             }
         }
     }
+}
+
+/**
+ * Razdelek "Opomniki – budilka": opomnik zvoni in se pokaže čez cel zaslon, dokler ga ne potrdiš.
+ * Tu je tudi gumb za preizkus in seznam dovoljenj, ki jih budilka potrebuje (z gumbi do nastavitev).
+ */
+@Composable
+private fun AlarmSection(settings: si.sluzbataski.data.prefs.SettingsStore) {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(settings.alarmStyleReminders) }
+    var refresh by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { refresh++ }   // po vrnitvi iz sistemskih nastavitev
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { refresh++ }
+
+    val hasNotif = remember(refresh) {
+        Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+    val hasFullScreen = remember(refresh) {
+        Build.VERSION.SDK_INT < 34 || context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+    }
+    val hasExact = remember(refresh) {
+        Build.VERSION.SDK_INT < 31 || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+    }
+    fun open(intent: Intent) = try { context.startActivity(intent) } catch (e: Exception) {
+        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+    }
+
+    Text("Opomniki – budilka", style = MaterialTheme.typography.titleMedium)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("Opomnik zvoni kot budilka, dokler ga ne potrdiš", Modifier.weight(1f))
+        Switch(enabled, { enabled = it; settings.alarmStyleReminders = it })
+    }
+    Text("Ob času opomnika telefon zvoni z zvokom budilke in vibrira, na zaslonu se odpre okno z gumbi " +
+        "Sprejeto / Opravljeno / Odloži. Če se ne odzoveš, po 10 minutah utihne in zazvoni znova čez 10 minut. " +
+        "Izklopljeno = samo navadno obvestilo.",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+    if (!hasNotif) {
+        Text("✗ Obvestila niso dovoljena – budilka ne bo zazvonila.", color = MaterialTheme.colorScheme.error)
+        OutlinedButton(onClick = { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("Dovoli obvestila") }
+    }
+    if (!hasFullScreen) {
+        Text("✗ Prikaz čez cel zaslon ni dovoljen – budilka bo zvonila, okno pa se ne bo odprlo samo.",
+            color = MaterialTheme.colorScheme.error)
+        OutlinedButton(onClick = {
+            open(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}")))
+        }) { Text("Dovoli prikaz čez cel zaslon") }
+    }
+    if (!hasExact) {
+        Text("✗ Točni alarmi niso dovoljeni – opomnik lahko zamudi nekaj minut.", color = MaterialTheme.colorScheme.error)
+        OutlinedButton(onClick = {
+            open(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
+        }) { Text("Dovoli točne alarme") }
+    }
+    if (hasNotif && hasFullScreen && hasExact) Text("✓ Vsa potrebna dovoljenja so vklopljena.", fontWeight = FontWeight.Medium)
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(onClick = {
+            if (!AlarmService.start(context, AlarmService.TEST_TASK_ID, "Preizkus budilke", "Tako bo zvonil opomnik taska"))
+                Toast.makeText(context, "Budilke ni bilo mogoče zagnati", Toast.LENGTH_LONG).show()
+        }) { Text("Preizkusi budilko") }
+        OutlinedButton(onClick = {
+            open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+        }) { Text("Nastavitve aplikacije") }
+    }
+    Text("Xiaomi / Redmi: v Nastavitvah aplikacije vklopi Dovoljenja → Druga dovoljenja → \"Prikaz na zaklenjenem zaslonu\" " +
+        "in \"Prikaz pojavnih oken med delovanjem v ozadju\", pri Varčevanju z baterijo izberi \"Brez omejitev\" " +
+        "in vklopi Samodejni zagon. Brez tega MIUI lahko budilko utiša ali je ne pokaže.",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** Dialog za novo / urejanje delovnega mesta: ime in barva. */
