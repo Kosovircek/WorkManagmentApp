@@ -148,7 +148,7 @@ fun RecurrenceEditor(state: TaskFormState, onEnable: () -> Unit) {
             }
             val desc = Recurrence.describe(state.recurrenceType, state.recurrenceDays)
             Text(if (desc.isEmpty()) (if (state.recurrenceType == Recurrence.INTERVAL)
-                    "Vpiši število dni (1–${Recurrence.MAX_INTERVAL})." else "Izberi vsaj en dan.") else "Ponavlja se $desc. Ko task opraviš, se ustvari naslednji.",
+                    "Vpiši število dni (1–${Recurrence.MAX_INTERVAL})." else "Izberi vsaj en dan.") else "Ponavlja se $desc. Ko ga opraviš, ostane na seznamu z rokom naslednje ponovitve.",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (desc.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
         }

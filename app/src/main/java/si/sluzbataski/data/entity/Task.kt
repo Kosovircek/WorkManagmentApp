@@ -11,6 +11,8 @@ import androidx.room.PrimaryKey
  * Življenjski cikel:
  *  1. ustvarjen ([createdAt]) – odprt, viden v seznamu in widgetu
  *  2. opravljen ([completedAt] != null) – izgine iz seznama/widgeta, ostane v arhivu
+ *     (ponavljajoč task se nikoli ne zaključi: ob "opravljeno" se mu premakne rok, v arhiv pa
+ *     gre zapis opravljene ponovitve s [seriesId] = ID ponavljajočega taska)
  *  3. (opcijsko) izbrisan ([deletedAt] != null) – skrit povsod, a v bazi ostane za
  *     statistiko in CSV izvoz. Fizično se ne briše nič.
  *

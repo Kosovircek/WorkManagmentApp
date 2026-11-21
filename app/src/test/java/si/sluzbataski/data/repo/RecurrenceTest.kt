@@ -70,4 +70,14 @@ class RecurrenceTest {
             assert(Recurrence.isValid(it, Recurrence.defaultDays(it, d)))
         }
     }
+
+    @Test
+    fun rrules() {
+        assertEquals("FREQ=WEEKLY;BYDAY=MO,FR", Recurrence.toRRule(Recurrence.WEEKLY, "1,5"))
+        assertEquals("FREQ=MONTHLY;BYMONTHDAY=1,-1", Recurrence.toRRule(Recurrence.MONTHLY, "1,31"))
+        assertEquals("FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=24", Recurrence.toRRule(Recurrence.YEARLY, "1224"))
+        assertNull(Recurrence.toRRule(Recurrence.YEARLY, "0315,1224"))
+        assertEquals("FREQ=DAILY;INTERVAL=10", Recurrence.toRRule(Recurrence.INTERVAL, "10"))
+        assertNull(Recurrence.toRRule(null, "1"))
+    }
 }

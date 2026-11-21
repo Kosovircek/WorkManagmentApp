@@ -14,6 +14,9 @@ interface TaskEventDao {
     @Query("SELECT * FROM task_events WHERE taskId = :taskId ORDER BY at DESC, id DESC")
     fun observeForTask(taskId: Long): Flow<List<TaskEvent>>
 
+    @Query("DELETE FROM task_events WHERE taskId = :taskId")
+    suspend fun deleteForTask(taskId: Long)
+
     @Query("SELECT * FROM task_events ORDER BY id")
     suspend fun getAll(): List<TaskEvent>
 }

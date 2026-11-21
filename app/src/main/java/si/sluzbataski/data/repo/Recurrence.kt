@@ -8,9 +8,10 @@ import java.util.Locale
 /**
  * Pravila ponavljanja taskov.
  *
- * Ponavljajoč task ima vedno datum (nujnost DATUM). Ko ga označiš kot opravljenega,
- * [si.sluzbataski.data.repo.TaskRepository.complete] s pomočjo [next] izračuna datum
- * naslednje ponovitve in ustvari nov task z enakimi podatki.
+ * Ponavljajoč task ima vedno datum (nujnost DATUM) in je EN task, ki se ponavlja v nedogled.
+ * Ko ga označiš kot opravljenega, [si.sluzbataski.data.repo.TaskRepository.complete] s pomočjo
+ * [nextAfterDone] premakne njegov rok na naslednjo ponovitev (opravljena ponovitev gre v arhiv).
+ * V Google Koledarju je en ponavljajoč dogodek ([toRRule]).
  *
  * Vrste in zapis izbranih dni (polje Task.recurrenceDays):
  *  - [WEEKLY]  "1,3,5"     ponedeljek, sreda, petek (1 = pon ... 7 = ned)
@@ -108,6 +109,24 @@ object Recurrence {
             d = d.plusDays(1)
         }
         return null
+    }
+
+    /**
+     * Pravilo ponavljanja v obliki RRULE (RFC 5545) za Google Koledar, da koledar pokaže
+     * vse prihodnje ponovitve. Null, kadar pravila ni mogoče zapisati z enim RRULE
+     * (letno na več različnih datumov) – takrat koledar pokaže samo naslednjo ponovitev.
+     */
+    fun toRRule(type: String?, days: String?): String? {
+        if (!isValid(type, days)) return null
+        val v = parse(days)
+        return when (type) {
+            WEEKLY -> "FREQ=WEEKLY;BYDAY=" + v.joinToString(",") { listOf("MO", "TU", "WE", "TH", "FR", "SA", "SU")[it - 1] }
+            // 31. v mesecu pomeni "zadnji dan", kar je v RRULE -1
+            MONTHLY -> "FREQ=MONTHLY;BYMONTHDAY=" + v.map { if (it >= 31) -1 else it }.distinct().joinToString(",")
+            YEARLY -> v.singleOrNull()?.let { "FREQ=YEARLY;BYMONTH=${it / 100};BYMONTHDAY=${it % 100}" }
+            INTERVAL -> "FREQ=DAILY;INTERVAL=${interval(days)}"
+            else -> null
+        }
     }
 
     /** Kratek opis za prikaz, npr. "vsak pon, sre" ali "vsak mesec 1., 15.". */
