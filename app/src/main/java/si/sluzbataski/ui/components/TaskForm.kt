@@ -99,7 +99,7 @@ class TaskFormState(
     val effectiveReminder: Int? get() = if (urgency == Urgency.DATUM && dueHasTime) reminderMinutes else null
 
     /** Ali je ponavljanje vklopljeno in ima izbran vsaj en dan. */
-    val hasRecurrence: Boolean get() = recurrenceType != null && Recurrence.parse(recurrenceDays).isNotEmpty()
+    val hasRecurrence: Boolean get() = Recurrence.isValid(recurrenceType, recurrenceDays)
 
     /**
      * Obrazec je veljaven, ko je opis vpisan in ima "Datum" izbran datum

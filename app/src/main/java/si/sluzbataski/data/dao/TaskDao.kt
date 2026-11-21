@@ -1,6 +1,7 @@
 package si.sluzbataski.data.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
@@ -58,6 +59,12 @@ interface TaskDao {
     /** Seznam različnih naročnikov (za predloge pri vnosu). */
     @Query("SELECT DISTINCT client FROM tasks WHERE client IS NOT NULL AND client != '' ORDER BY client COLLATE NOCASE")
     fun observeClients(): Flow<List<String>>
+
+    /** Zadnja opravljena ponovitev ponavljajočega taska (za Razveljavi). */
+    @Query("SELECT * FROM tasks WHERE seriesId = :id AND completedAt IS NOT NULL ORDER BY completedAt DESC LIMIT 1")
+    suspend fun getLastDoneInSeries(id: Long): Task?
+
+    @Delete suspend fun delete(t: Task)
 
     @Insert suspend fun insert(t: Task): Long
     @Update suspend fun update(t: Task)

@@ -70,10 +70,11 @@ class TaskRepository(
     ): Long {
         val now = System.currentTimeMillis()
         val dated = urgency == Urgency.DATUM
-        val recurring = dated && recurrenceType != null && Recurrence.parse(recurrenceDays).isNotEmpty()
+        val recurring = dated && Recurrence.isValid(recurrenceType, recurrenceDays)
         // Ponavljajoč task brez izbranega datuma: prva ponovitev je prvi ustrezen dan od danes naprej.
         val firstDue = if (dated && dueAt == null && recurring)
-            Recurrence.next(recurrenceType, recurrenceDays, LocalDate.now(zone).minusDays(1))
+            (if (recurrenceType == Recurrence.INTERVAL) LocalDate.now(zone)
+            else Recurrence.next(recurrenceType, recurrenceDays, LocalDate.now(zone).minusDays(1)))
                 ?.atStartOfDay(zone)?.toInstant()?.toEpochMilli()
         else dueAt
         val task = Task(
@@ -87,7 +88,7 @@ class TaskRepository(
             createdAt = now,
             updatedAt = now,
             recurrenceType = if (recurring) recurrenceType else null,
-            recurrenceDays = if (recurring) Recurrence.join(Recurrence.parse(recurrenceDays)) else null,
+            recurrenceDays = if (recurring) Recurrence.normalize(recurrenceType, recurrenceDays) else null,
             reminderMinutes = if (dated) reminderMinutes else null,
         )
         val id = dao.insert(task)
@@ -104,7 +105,7 @@ class TaskRepository(
     suspend fun update(edited: Task) {
         val old = dao.get(edited.id) ?: return
         val dated = edited.urgency == Urgency.DATUM
-        val recurring = dated && edited.recurrenceType != null && Recurrence.parse(edited.recurrenceDays).isNotEmpty()
+        val recurring = dated && Recurrence.isValid(edited.recurrenceType, edited.recurrenceDays)
         val clean = edited.copy(
             description = edited.description.trim(),
             client = edited.client?.trim()?.ifBlank { null },
@@ -112,7 +113,7 @@ class TaskRepository(
             dueHasTime = dated && edited.dueHasTime,
             updatedAt = System.currentTimeMillis(),
             recurrenceType = if (recurring) edited.recurrenceType else null,
-            recurrenceDays = if (recurring) Recurrence.join(Recurrence.parse(edited.recurrenceDays)) else null,
+            recurrenceDays = if (recurring) Recurrence.normalize(edited.recurrenceType, edited.recurrenceDays) else null,
             reminderMinutes = if (dated) edited.reminderMinutes else null,
         )
         dao.update(clean)
@@ -154,46 +155,85 @@ class TaskRepository(
         update(t.copy(urgency = Urgency.LADDER[newIdx]))
     }
 
-    /** Označi task kot opravljen – izgine iz seznama in widgeta, ostane v arhivu. */
+    /**
+     * Označi task kot opravljen – izgine iz seznama in widgeta, ostane v arhivu.
+     *
+     * Ponavljajoč task pa NE izgine: je en sam task, ki se ponavlja v nedogled. Njegov rok se
+     * premakne na naslednjo ponovitev (glej [advanceRecurring]), opravljena ponovitev pa se
+     * shrani kot ločen zapis v arhivu, da ostane v zgodovini in statistiki.
+     */
     suspend fun complete(id: Long) {
         val t = dao.get(id) ?: return
         if (t.completedAt != null) return
+        if (t.isRecurring && t.dueAt != null && t.deletedAt == null) {
+            advanceRecurring(t)
+            afterChange()
+            return
+        }
         val done = t.copy(completedAt = System.currentTimeMillis(), updatedAt = System.currentTimeMillis())
         dao.update(done)
         log(done, TaskEventType.COMPLETED, "Trajanje: ${Format.duration(done.completedAt!! - done.createdAt)}")
         syncCalendar(done)
-        if (done.isRecurring) createNextOccurrence(done)
         afterChange()
     }
 
     /**
-     * Ustvari naslednjo ponovitev ponavljajočega taska (kliče se, ko je trenutna opravljena).
-     * Naslednji datum je prvi ustrezen dan po roku trenutne ponovitve, vendar ne v preteklosti
-     * (če zamujaš več ponovitev, se ustvari samo ena – naslednja od danes naprej).
+     * Opravljena ponovitev ponavljajočega taska:
+     *  1. v arhiv se zapiše kopija "opravljeno na dan X" (brez ponavljanja, koledarja, opomnika in slike),
+     *     povezana z izvirnikom prek seriesId – zato štejejo statistika, arhiv in CSV izvoz;
+     *  2. izvirni task ostane odprt, rok se premakne na naslednjo ponovitev (od danes naprej, ura ostane),
+     *     koledarski dogodek (ponavljajoč) in budilka se premakneta skupaj z njim.
      */
-    private suspend fun createNextOccurrence(done: Task) {
-        val due = done.dueAt ?: return
+    private suspend fun advanceRecurring(t: Task) {
+        val due = t.dueAt ?: return
         val dueZdt = Instant.ofEpochMilli(due).atZone(zone)
-        val yesterday = LocalDate.now(zone).minusDays(1)
-        val after = maxOf(dueZdt.toLocalDate(), yesterday)
-        val nextDate = Recurrence.next(done.recurrenceType, done.recurrenceDays, after) ?: return
+        val nextDate = Recurrence.nextAfterDone(t.recurrenceType, t.recurrenceDays,
+            dueZdt.toLocalDate(), LocalDate.now(zone)) ?: return
         val now = System.currentTimeMillis()
-        val next = done.copy(
+
+        // 1. zapis opravljene ponovitve (za arhiv in statistiko)
+        val record = t.copy(
             id = 0,
-            dueAt = nextDate.atTime(dueZdt.toLocalTime()).atZone(zone).toInstant().toEpochMilli(),
-            createdAt = now,
+            createdAt = minOf(now, dueZdt.toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()),
             updatedAt = now,
-            completedAt = null,
-            deletedAt = null,
+            completedAt = now,
             calendarEventId = null,
-            photoPath = null, // slika ostane pri prvotnem tasku (vsaka datoteka pripada enemu tasku)
-            seriesId = done.seriesId ?: done.id,
+            photoPath = null, // slika pripada ponavljajočemu tasku
+            recurrenceType = null,
+            recurrenceDays = null,
+            reminderMinutes = null,
+            seriesId = t.id,
         )
-        val id = dao.insert(next)
-        val created = next.copy(id = id)
-        log(done, TaskEventType.NEXT_OCCURRENCE, "Naslednja: ${Format.date(created.dueAt!!)}")
-        log(created, TaskEventType.CREATED, "Ponovitev (${Recurrence.describe(next.recurrenceType, next.recurrenceDays)})")
-        syncCalendar(created)
+        val recordId = dao.insert(record)
+        log(record.copy(id = recordId), TaskEventType.COMPLETED, "Ponovitev ${Format.date(due)}")
+
+        // 2. isti task dobi nov rok
+        val next = t.copy(
+            dueAt = nextDate.atTime(dueZdt.toLocalTime()).atZone(zone).toInstant().toEpochMilli(),
+            updatedAt = now,
+        )
+        dao.update(next)
+        log(next, TaskEventType.NEXT_OCCURRENCE, "Opravljeno ${Format.date(due)}, naslednjič ${Format.date(next.dueAt!!)}")
+        syncCalendar(next)
+    }
+
+    /**
+     * Razveljavi zadnji "Opravljeno" (gumb Razveljavi na seznamu).
+     * Pri ponavljajočem tasku vrne rok na prejšnjo ponovitev in pobriše njen zapis v arhivu.
+     */
+    suspend fun undoComplete(id: Long) {
+        val t = dao.get(id) ?: return
+        if (t.completedAt != null) { reopen(id); return }
+        if (!t.isRecurring) return
+        val record = dao.getLastDoneInSeries(id) ?: return
+        if (System.currentTimeMillis() - (record.completedAt ?: 0) > 10 * 60_000L) return // samo sveže
+        dao.delete(record)
+        events.deleteForTask(record.id)
+        val back = t.copy(dueAt = record.dueAt, updatedAt = System.currentTimeMillis())
+        dao.update(back)
+        log(back, TaskEventType.REOPENED, "Ponovitev ${record.dueAt?.let { Format.date(it) } ?: ""} spet odprta")
+        syncCalendar(back)
+        afterChange()
     }
 
     /** Ponovno nastavi alarme za vse odprte taske z opomnikom (po zagonu telefona). */
