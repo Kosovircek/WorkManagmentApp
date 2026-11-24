@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import si.sluzbataski.data.entity.Task
 import si.sluzbataski.data.prefs.SettingsStore
+import si.sluzbataski.data.repo.Recurrence
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -34,6 +35,8 @@ import java.util.TimeZone
  * PRAVILA
  *  - task z nujnostjo DATUM  -> dogodek obstaja (ustvari/posodobi)
  *  - task opravljen          -> dogodek ostane, naslov dobi predpono "✔ "
+ *  - ponavljajoč task        -> en ponavljajoč dogodek (RRULE), ki se začne pri trenutnem roku;
+ *                               ko ponovitev opraviš, se začetek premakne na naslednjo
  *  - task izbrisan ali ni več DATUM -> dogodek se izbriše
  */
 class CalendarSync(private val context: Context, private val settings: SettingsStore) {
@@ -75,7 +78,7 @@ class CalendarSync(private val context: Context, private val settings: SettingsS
      * Uskladi koledarski dogodek s stanjem taska.
      * @return nov ID dogodka (ali null, če dogodka ni), ki ga je treba shraniti v task.
      */
-    suspend fun sync(task: Task): Long? = withContext(Dispatchers.IO) {
+    suspend fun sync(task: Task, usedEventIds: suspend () -> Set<Long> = { emptySet() }): Long? = withContext(Dispatchers.IO) {
         if (!settings.calendarEnabled || !hasPermission()) return@withContext task.calendarEventId
         try {
             val cr = context.contentResolver
@@ -96,6 +99,12 @@ class CalendarSync(private val context: Context, private val settings: SettingsS
                 val rows = cr.update(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id), values, null, null)
                 if (rows > 0) return@withContext id
             }
+            // Dogodek morda že obstaja (npr. po uvozu na nov telefon z istim Google računom,
+            // kjer je dogodek vpisal stari telefon). Takrat ga prevzamemo, da se ne podvoji.
+            findExisting(cal.id, values, usedEventIds())?.let { id ->
+                cr.update(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id), values, null, null)
+                return@withContext id
+            }
             val uri = cr.insert(CalendarContract.Events.CONTENT_URI, values)
             uri?.let { ContentUris.parseId(it) }
         } catch (e: Exception) {
@@ -103,6 +112,24 @@ class CalendarSync(private val context: Context, private val settings: SettingsS
             Log.w(TAG, "Sinhronizacija koledarja ni uspela", e)
             task.calendarEventId
         }
+    }
+
+    /**
+     * Poišče neizbrisan dogodek v istem koledarju z enakim naslovom in začetkom, ki ga
+     * ne uporablja že kak drug task. Vrne njegov ID ali null.
+     */
+    private fun findExisting(calendarId: Long, values: ContentValues, used: Set<Long>): Long? {
+        val sel = "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DTSTART} = ? AND " +
+            "${CalendarContract.Events.TITLE} = ? AND ${CalendarContract.Events.DELETED} = 0"
+        val args = arrayOf(calendarId.toString(), values.getAsLong(CalendarContract.Events.DTSTART).toString(),
+            values.getAsString(CalendarContract.Events.TITLE))
+        context.contentResolver.query(CalendarContract.Events.CONTENT_URI, arrayOf(CalendarContract.Events._ID), sel, args, null)?.use { c ->
+            while (c.moveToNext()) {
+                val id = c.getLong(0)
+                if (id !in used) return id
+            }
+        }
+        return null
     }
 
     /** Sestavi vrednosti dogodka. Celodnevni dogodki morajo biti v UTC polnoči. */
@@ -118,18 +145,31 @@ class CalendarSync(private val context: Context, private val settings: SettingsS
             put(CalendarContract.Events.CALENDAR_ID, calendarId)
             put(CalendarContract.Events.TITLE, title)
             put(CalendarContract.Events.DESCRIPTION, desc)
+            // Ponavljajoč dogodek mora namesto DTEND imeti DURATION (pravilo Calendar Providerja).
+            val rrule = if (task.completedAt == null) Recurrence.toRRule(task.recurrenceType, task.recurrenceDays) else null
+            val start: Long
+            val lengthSec: Long
             if (task.dueHasTime) {
-                put(CalendarContract.Events.DTSTART, due)
-                put(CalendarContract.Events.DTEND, due + 60 * 60 * 1000L) // privzeto 1 ura
+                start = due
+                lengthSec = 60 * 60L // privzeto 1 ura
                 put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
                 put(CalendarContract.Events.ALL_DAY, 0)
             } else {
                 val localDate = Instant.ofEpochMilli(due).atZone(ZoneId.systemDefault()).toLocalDate()
-                val startUtc = localDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-                put(CalendarContract.Events.DTSTART, startUtc)
-                put(CalendarContract.Events.DTEND, startUtc + 24 * 60 * 60 * 1000L)
+                start = localDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+                lengthSec = 24 * 60 * 60L
                 put(CalendarContract.Events.EVENT_TIMEZONE, "UTC")
                 put(CalendarContract.Events.ALL_DAY, 1)
+            }
+            put(CalendarContract.Events.DTSTART, start)
+            if (rrule != null) {
+                put(CalendarContract.Events.RRULE, rrule)
+                put(CalendarContract.Events.DURATION, if (task.dueHasTime) "P${lengthSec}S" else "P1D")
+                putNull(CalendarContract.Events.DTEND)
+            } else {
+                putNull(CalendarContract.Events.RRULE)
+                putNull(CalendarContract.Events.DURATION)
+                put(CalendarContract.Events.DTEND, start + lengthSec * 1000L)
             }
         }
     }

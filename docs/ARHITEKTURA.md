@@ -104,6 +104,10 @@ erDiagram
         long completedAt "null = odprt"
         long deletedAt "null = ni izbrisan"
         long calendarEventId
+        string recurrenceType "WEEKLY, MONTHLY, YEARLY ali null"
+        string recurrenceDays "npr. 1,3 / 1,15 / 0315,1224"
+        long seriesId "ponavljajoč task, ki mu pripada opravljena ponovitev"
+        int reminderMinutes "minute pred rokom ali null"
     }
     TASK_EVENTS {
         long id PK
@@ -180,9 +184,56 @@ Aplikacija uporablja Androidov *Calendar Provider*, ki vsebuje koledarje Google 
 Dogodek, vpisan v koledar Google računa, Android sam sinhronizira z Google Koledarjem, zato ni
 potrebna nobena Google prijava ali API ključ. Ciljni koledar je ročno izbran v Nastavitvah ali
 (privzeto) koledar z imenom `SluzbaTaski`. Če dovoljenje ob vnosu še ni bilo dano, se task vpiše
-ob naslednjem zagonu (`TaskRepository.syncPendingCalendar`).
+ob naslednjem zagonu (`TaskRepository.syncPendingCalendar`). Pred vpisom novega dogodka aplikacija
+preveri, ali v koledarju že obstaja dogodek z enakim naslovom in začetkom (npr. po uvozu na nov
+telefon z istim Google računom) in ga prevzame, namesto da bi ga podvojila.
 
-## 8. Spreminjanje baze v prihodnosti
+## 8. Ponavljajoči taski in opomniki
+
+**Ponavljanje** (`data/repo/Recurrence.kt`): ponavljajoč task ima vedno datum in je **en sam task,
+ki se ponavlja v nedogled**. Ko ga označiš kot opravljenega, `TaskRepository.advanceRecurring`
+izračuna naslednji ustrezen dan (po roku trenutnega, a ne v preteklosti) in temu istemu tasku
+premakne rok. Opravljena ponovitev se zapiše kot ločen opravljen task (brez ponavljanja,
+`seriesId` = ID ponavljajočega taska), da šteje v arhiv, statistiko in CSV. "Razveljavi" vrne rok
+nazaj (`undoComplete`). Če ponovitve ne opraviš, task ostane odprt z zamujenim rokom.
+V Google Koledarju je en ponavljajoč dogodek (RRULE, `Recurrence.toRRule`), ki se začne pri
+trenutnem roku; budilka se nastavi za trenutni rok in se premakne skupaj z njim.
+Vrste: tedensko, mesečno, letno (izbrani dnevi) in **po meri – vsakih N dni** (`INTERVAL`, v
+`recurrenceDays` je samo N). Pri "po meri" se šteje od roka prejšnje ponovitve, ne od dneva, ko si
+task opravil, tako da se ritem ne zamika (`Recurrence.nextAfterDone`). Ponavljanje je v CSV v
+stolpcih `ponavljanje` in `ponavljanje_dnevi`.
+
+**Opomniki** (`reminder/`): `ReminderScheduler` nastavi `AlarmManager.setAlarmClock` (točno, kot
+budilka) `reminderMinutes` pred rokom. Opomnik je privzeto izklopljen; uporabnik ga izbere s
+klikom (Ob roku, 10, 30, 45 min, 1 h prej) in samo pri tasku z uro (`TaskFormState.effectiveReminder`). `ReminderReceiver` ob sprožitvi zažene **budilko** `AlarmService` (storitev v
+ospredju): predvaja zvok budilke telefona v zanki, vibrira in prek celozaslonskega obvestila odpre
+`AlarmActivity` (tudi na zaklenjenem zaslonu) z gumbi *Sprejeto*, *Opravljeno* in *Odloži 10 min*.
+Zvoni, dokler uporabnik ne pritisne gumba; po 10 minutah brez odziva utihne in se sama odloži za
+10 minut. Če je budilka v Nastavitvah izklopljena ali je Android ne dovoli zagnati, se pokaže navadno
+obvestilo z vibriranjem. Alarm se nastavi/prekliče ob vsaki spremembi taska (opravljen task med
+zvonjenjem budilko utiša), `BootReceiver` pa jih po ponovnem zagonu telefona nastavi znova.
+
+```mermaid
+sequenceDiagram
+    participant R as TaskRepository
+    participant S as ReminderScheduler
+    participant A as AlarmManager
+    participant RR as ReminderReceiver
+    participant AS as AlarmService / AlarmActivity
+    actor U as Uporabnik
+    R->>S: schedule(task) ob vsaki spremembi
+    S->>A: setAlarmClock(rok − opomnik)
+    A-->>RR: ob času opomnika
+    RR->>AS: start(task)
+    AS->>U: zvonjenje + vibriranje + okno čez cel zaslon (v zanki)
+    U->>AS: "Sprejeto" / "Opravljeno" / "Odloži 10 min"
+    AS->>R: complete(id)  (ponavljajoč → rok na naslednjo ponovitev)
+```
+
+## 9. Spreminjanje baze v prihodnosti
+
+Zgodovina verzij: **v1** začetna, **v2** ponavljanje in opomniki (`MIGRATION_1_2`).
+
 
 Ob spremembi entitete povečaj `version` v `AppDatabase` in dodaj `Migration`. **Nikoli** ne uporabi
 `fallbackToDestructiveMigration()` – to bi izbrisalo celotno zgodovino.

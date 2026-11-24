@@ -114,6 +114,7 @@ private fun MainScreen(vm: MainViewModel) {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Meni") }
                         DropdownMenu(menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(text = { Text("Arhiv (opravljeni)") }, onClick = { menu = false; context.open<ArchiveActivity>() })
+                            DropdownMenuItem(text = { Text("Dodaj widget na domači zaslon") }, onClick = { menu = false; context.open<SettingsActivity>() })
                             DropdownMenuItem(text = { Text("Nastavitve in izvoz") }, onClick = { menu = false; context.open<SettingsActivity>() })
                         }
                     }

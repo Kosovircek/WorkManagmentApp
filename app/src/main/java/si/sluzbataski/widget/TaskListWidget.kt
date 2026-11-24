@@ -50,11 +50,14 @@ class TaskListWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val graph = AppGraph.get(context)
-        val workplace = graph.workplaces.getActive()
-        val canSwitch = graph.db.workplaceDao().getActive().size > 1
-        val tasks = workplace?.let { graph.tasks.getOpenSorted(it.id) }.orEmpty().take(MAX_ITEMS)
+        val initial = WidgetData.load(graph)
 
-        provideContent { Content(context, workplace, canSwitch, tasks) }
+        provideContent {
+            // Podatki se opazujejo (glej WidgetData.observe), zato se seznam takoj
+            // posodobi ob preklopu delovnega mesta ali spremembi taskov.
+            val data = WidgetData.observe(graph, initial)
+            Content(context, data.workplace, data.canSwitch, data.tasks.take(MAX_ITEMS))
+        }
     }
 
     @Composable
@@ -104,7 +107,11 @@ class TaskListWidget : GlanceAppWidget() {
                 ) {
                     Text(task.description, style = textStyle(14), maxLines = 2)
                     val sub = buildString {
-                        if (task.hasDate) append("📅 ").append(Format.due(task.dueAt!!, task.dueHasTime))
+                        if (task.hasDate) {
+                            append("📅 ").append(Format.due(task.dueAt!!, task.dueHasTime))
+                            if (task.isRecurring) append(" 🔁")
+                            if (task.reminderMinutes != null) append(" ⏰")
+                        }
                         else append(task.urgency.label).append(" · ").append(Format.age(task.createdAt))
                         task.client?.let { append(" · ").append(it) }
                         if (task.photoPath != null) append(" · 📷")

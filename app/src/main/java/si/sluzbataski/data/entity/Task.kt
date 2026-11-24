@@ -11,6 +11,8 @@ import androidx.room.PrimaryKey
  * Življenjski cikel:
  *  1. ustvarjen ([createdAt]) – odprt, viden v seznamu in widgetu
  *  2. opravljen ([completedAt] != null) – izgine iz seznama/widgeta, ostane v arhivu
+ *     (ponavljajoč task se nikoli ne zaključi: ob "opravljeno" se mu premakne rok, v arhiv pa
+ *     gre zapis opravljene ponovitve s [seriesId] = ID ponavljajočega taska)
  *  3. (opcijsko) izbrisan ([deletedAt] != null) – skrit povsod, a v bazi ostane za
  *     statistiko in CSV izvoz. Fizično se ne briše nič.
  *
@@ -52,10 +54,29 @@ data class Task(
     val deletedAt: Long? = null,
     /** ID dogodka v Android/Google koledarju (če je bil task vpisan v koledar). */
     val calendarEventId: Long? = null,
+    /**
+     * Ponavljanje: "WEEKLY", "MONTHLY", "YEARLY" ali null (ne ponavlja se).
+     * Glej [si.sluzbataski.data.repo.Recurrence].
+     */
+    val recurrenceType: String? = null,
+    /**
+     * Izbrani dnevi ponavljanja, ločeni z vejico:
+     *  - WEEKLY:  dnevi v tednu 1–7 (1 = ponedeljek), npr. "1,3"
+     *  - MONTHLY: dnevi v mesecu 1–31, npr. "1,15"
+     *  - YEARLY:  datumi MMdd, npr. "0315,1224"
+     */
+    val recurrenceDays: String? = null,
+    /** ID prvega taska v seriji ponovitev (za povezovanje ponovitev med seboj). */
+    val seriesId: Long? = null,
+    /** Opomnik: koliko minut pred rokom (0 = ob roku, null = brez opomnika). */
+    val reminderMinutes: Int? = null,
 ) {
     /** Task je odprt, če ni opravljen in ni izbrisan. */
     val isOpen: Boolean get() = completedAt == null && deletedAt == null
 
     /** Ali ima task veljaven rok. */
     val hasDate: Boolean get() = urgency == Urgency.DATUM && dueAt != null
+
+    /** Ali se task ponavlja. */
+    val isRecurring: Boolean get() = recurrenceType != null && !recurrenceDays.isNullOrBlank()
 }

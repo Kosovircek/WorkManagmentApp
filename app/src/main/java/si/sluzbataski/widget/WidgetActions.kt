@@ -23,11 +23,14 @@ import si.sluzbataski.ui.main.MainActivity
  *   odprli isto stvar.
  */
 
-/** Klik na ime delovnega mesta na widgetu: preklopi na naslednje mesto. */
+/**
+ * Klik na ime delovnega mesta na widgetu: preklopi na naslednje mesto.
+ * Preklop velja povsod (aplikacija, oba widgeta), ker je shranjen v SettingsStore.
+ */
 class SwitchWorkplaceAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        // cycleNext() shrani novo aktivno mesto in sam osveži vse widgete
         AppGraph.get(context).workplaces.cycleNext()
-        WidgetUpdater.updateAll(context)
     }
 }
 
@@ -59,8 +62,27 @@ fun taskDetailIntent(context: Context, taskId: Long): Intent =
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
+fun settingsIntent(context: Context): Intent =
+    Intent(context, si.sluzbataski.ui.settings.SettingsActivity::class.java).apply {
+        data = Uri.parse("sluzbataski://settings")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
 fun mainIntent(context: Context): Intent =
     Intent(context, MainActivity::class.java).apply {
         data = Uri.parse("sluzbataski://main")
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
+
+/**
+ * Zaprosi zaganjalnik (launcher), da widget postavi na domači zaslon.
+ * To je zanesljivejše od iskanja v seznamu pripomočkov (npr. na Xiaomi/MIUI).
+ * Uporabnik mora postavitev le potrditi v sistemskem oknu.
+ *
+ * @return false, če zaganjalnik tega ne podpira (takrat je treba widget dodati ročno)
+ */
+fun requestPinWidget(context: Context, receiver: Class<*>): Boolean {
+    val manager = android.appwidget.AppWidgetManager.getInstance(context)
+    if (!manager.isRequestPinAppWidgetSupported) return false
+    return manager.requestPinAppWidget(android.content.ComponentName(context, receiver), null, null)
+}

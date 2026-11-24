@@ -44,13 +44,16 @@ import si.sluzbataski.data.entity.Workplace
 class QuickAddWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // Podatke naložimo PRED izrisom (Glance izriše statičen posnetek).
         val graph = AppGraph.get(context)
-        val workplace = graph.workplaces.getActive()
-        val canSwitch = graph.db.workplaceDao().getActive().size > 1
-        val openCount = workplace?.let { graph.tasks.getOpenSorted(it.id).size } ?: 0
+        // Začetne vrednosti naložimo vnaprej (da widget ne utripne prazen) ...
+        val initial = WidgetData.load(graph)
 
-        provideContent { Content(context, workplace, canSwitch, openCount) }
+        provideContent {
+            // ... nato pa podatke OPAZUJEMO: ob preklopu delovnega mesta (v aplikaciji
+            // ali na drugem widgetu) ali novem tasku se widget takoj prerisuje.
+            val data = WidgetData.observe(graph, initial)
+            Content(context, data.workplace, data.canSwitch, data.tasks.size)
+        }
     }
 
     @Composable
