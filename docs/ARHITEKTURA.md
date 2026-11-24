@@ -106,7 +106,7 @@ erDiagram
         long calendarEventId
         string recurrenceType "WEEKLY, MONTHLY, YEARLY ali null"
         string recurrenceDays "npr. 1,3 / 1,15 / 0315,1224"
-        long seriesId "prvi task serije ponovitev"
+        long seriesId "ponavljajoč task, ki mu pripada opravljena ponovitev"
         int reminderMinutes "minute pred rokom ali null"
     }
     TASK_EVENTS {
@@ -190,9 +190,18 @@ telefon z istim Google računom) in ga prevzame, namesto da bi ga podvojila.
 
 ## 8. Ponavljajoči taski in opomniki
 
-**Ponavljanje** (`data/repo/Recurrence.kt`): ponavljajoč task ima vedno datum. Ko ga označiš kot
-opravljenega, `TaskRepository.complete` izračuna naslednji ustrezen dan (po roku trenutnega, a ne
-v preteklosti) in ustvari nov task z enakimi podatki (brez slike), povezan prek `seriesId`.
+**Ponavljanje** (`data/repo/Recurrence.kt`): ponavljajoč task ima vedno datum in je **en sam task,
+ki se ponavlja v nedogled**. Ko ga označiš kot opravljenega, `TaskRepository.advanceRecurring`
+izračuna naslednji ustrezen dan (po roku trenutnega, a ne v preteklosti) in temu istemu tasku
+premakne rok. Opravljena ponovitev se zapiše kot ločen opravljen task (brez ponavljanja,
+`seriesId` = ID ponavljajočega taska), da šteje v arhiv, statistiko in CSV. "Razveljavi" vrne rok
+nazaj (`undoComplete`). Če ponovitve ne opraviš, task ostane odprt z zamujenim rokom.
+V Google Koledarju je en ponavljajoč dogodek (RRULE, `Recurrence.toRRule`), ki se začne pri
+trenutnem roku; budilka se nastavi za trenutni rok in se premakne skupaj z njim.
+Vrste: tedensko, mesečno, letno (izbrani dnevi) in **po meri – vsakih N dni** (`INTERVAL`, v
+`recurrenceDays` je samo N). Pri "po meri" se šteje od roka prejšnje ponovitve, ne od dneva, ko si
+task opravil, tako da se ritem ne zamika (`Recurrence.nextAfterDone`). Ponavljanje je v CSV v
+stolpcih `ponavljanje` in `ponavljanje_dnevi`.
 
 **Opomniki** (`reminder/`): `ReminderScheduler` nastavi `AlarmManager.setAlarmClock` (točno, kot
 budilka) `reminderMinutes` pred rokom. Opomnik je privzeto izklopljen; uporabnik ga izbere s
@@ -218,7 +227,7 @@ sequenceDiagram
     RR->>AS: start(task)
     AS->>U: zvonjenje + vibriranje + okno čez cel zaslon (v zanki)
     U->>AS: "Sprejeto" / "Opravljeno" / "Odloži 10 min"
-    AS->>R: complete(id)  (ponavljajoč → nova ponovitev)
+    AS->>R: complete(id)  (ponavljajoč → rok na naslednjo ponovitev)
 ```
 
 ## 9. Spreminjanje baze v prihodnosti

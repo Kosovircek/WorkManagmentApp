@@ -38,6 +38,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun complete(id: Long) = viewModelScope.launch { g.tasks.complete(id) }
-    fun undoComplete(id: Long) = viewModelScope.launch { g.tasks.reopen(id) }
+    fun undoComplete(id: Long) = viewModelScope.launch { g.tasks.undoComplete(id) }
     fun shift(id: Long, up: Boolean) = viewModelScope.launch { g.tasks.shiftUrgency(id, up) }
 }

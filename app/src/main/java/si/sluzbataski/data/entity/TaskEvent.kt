@@ -17,7 +17,7 @@ enum class TaskEventType(val label: String) {
     RESTORED("Obnovljen"),
     PHOTO_CHANGED("Sprememba slike"),
     MOVED_WORKPLACE("Premaknjen na drugo delovno mesto"),
-    NEXT_OCCURRENCE("Ustvarjena naslednja ponovitev"),
+    NEXT_OCCURRENCE("Naslednja ponovitev"),
     REMINDER("Opomnik");
 
     companion object {

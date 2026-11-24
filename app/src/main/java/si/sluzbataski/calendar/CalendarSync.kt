@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import si.sluzbataski.data.entity.Task
 import si.sluzbataski.data.prefs.SettingsStore
+import si.sluzbataski.data.repo.Recurrence
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -34,6 +35,8 @@ import java.util.TimeZone
  * PRAVILA
  *  - task z nujnostjo DATUM  -> dogodek obstaja (ustvari/posodobi)
  *  - task opravljen          -> dogodek ostane, naslov dobi predpono "✔ "
+ *  - ponavljajoč task        -> en ponavljajoč dogodek (RRULE), ki se začne pri trenutnem roku;
+ *                               ko ponovitev opraviš, se začetek premakne na naslednjo
  *  - task izbrisan ali ni več DATUM -> dogodek se izbriše
  */
 class CalendarSync(private val context: Context, private val settings: SettingsStore) {
@@ -142,18 +145,31 @@ class CalendarSync(private val context: Context, private val settings: SettingsS
             put(CalendarContract.Events.CALENDAR_ID, calendarId)
             put(CalendarContract.Events.TITLE, title)
             put(CalendarContract.Events.DESCRIPTION, desc)
+            // Ponavljajoč dogodek mora namesto DTEND imeti DURATION (pravilo Calendar Providerja).
+            val rrule = if (task.completedAt == null) Recurrence.toRRule(task.recurrenceType, task.recurrenceDays) else null
+            val start: Long
+            val lengthSec: Long
             if (task.dueHasTime) {
-                put(CalendarContract.Events.DTSTART, due)
-                put(CalendarContract.Events.DTEND, due + 60 * 60 * 1000L) // privzeto 1 ura
+                start = due
+                lengthSec = 60 * 60L // privzeto 1 ura
                 put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
                 put(CalendarContract.Events.ALL_DAY, 0)
             } else {
                 val localDate = Instant.ofEpochMilli(due).atZone(ZoneId.systemDefault()).toLocalDate()
-                val startUtc = localDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-                put(CalendarContract.Events.DTSTART, startUtc)
-                put(CalendarContract.Events.DTEND, startUtc + 24 * 60 * 60 * 1000L)
+                start = localDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+                lengthSec = 24 * 60 * 60L
                 put(CalendarContract.Events.EVENT_TIMEZONE, "UTC")
                 put(CalendarContract.Events.ALL_DAY, 1)
+            }
+            put(CalendarContract.Events.DTSTART, start)
+            if (rrule != null) {
+                put(CalendarContract.Events.RRULE, rrule)
+                put(CalendarContract.Events.DURATION, if (task.dueHasTime) "P${lengthSec}S" else "P1D")
+                putNull(CalendarContract.Events.DTEND)
+            } else {
+                putNull(CalendarContract.Events.RRULE)
+                putNull(CalendarContract.Events.DURATION)
+                put(CalendarContract.Events.DTEND, start + lengthSec * 1000L)
             }
         }
     }
