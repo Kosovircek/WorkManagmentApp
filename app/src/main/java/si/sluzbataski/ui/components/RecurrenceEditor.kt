@@ -29,6 +29,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -40,12 +41,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import si.sluzbataski.data.entity.Urgency
 import si.sluzbataski.data.repo.Recurrence
 import si.sluzbataski.reminder.ReminderScheduler
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Stikalo "🔁 Ponavljaj" in podmeni ponavljanja.
@@ -57,12 +62,19 @@ import java.time.LocalDate
  *  - Tedensko: izbira enega ali več dni v tednu
  *  - Mesečno:  izbira enega ali več dni v mesecu (1–31)
  *  - Letno:    seznam datumov (dan + mesec), dodajaš jih z izbirnikom datuma
+ *  - Po meri:  vsakih N dni (šteje se od roka prejšnje ponovitve)
+ *
+ * Ob izbiri vrste je takoj predizbran dan izbranega datuma (ali današnji), tako da
+ * "vsak teden / mesec / leto" deluje z enim klikom; dneve lahko nato še spremeniš.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RecurrenceEditor(state: TaskFormState, onEnable: () -> Unit) {
     val context = LocalContext.current
     val enabled = state.recurrenceType != null
+    // izhodišče za predizbiro: izbrani datum taska ali danes
+    fun base(): LocalDate = state.dueAt?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate() }
+        ?: LocalDate.now()
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Repeat, null, Modifier.size(20.dp))
@@ -71,7 +83,7 @@ fun RecurrenceEditor(state: TaskFormState, onEnable: () -> Unit) {
         Switch(enabled, { on ->
             if (on) {
                 state.recurrenceType = Recurrence.WEEKLY
-                state.recurrenceDays = ""
+                state.recurrenceDays = Recurrence.defaultDays(Recurrence.WEEKLY, base())
                 state.urgency = Urgency.DATUM
                 onEnable()
             } else {
@@ -89,10 +101,14 @@ fun RecurrenceEditor(state: TaskFormState, onEnable: () -> Unit) {
 
     Card {
         Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(Recurrence.WEEKLY to "Tedensko", Recurrence.MONTHLY to "Mesečno", Recurrence.YEARLY to "Letno").forEach { (t, label) ->
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(Recurrence.WEEKLY to "Tedensko", Recurrence.MONTHLY to "Mesečno",
+                    Recurrence.YEARLY to "Letno", Recurrence.INTERVAL to "Po meri").forEach { (t, label) ->
                     FilterChip(state.recurrenceType == t, {
-                        if (state.recurrenceType != t) { state.recurrenceType = t; state.recurrenceDays = "" }
+                        if (state.recurrenceType != t) {
+                            state.recurrenceType = t
+                            state.recurrenceDays = Recurrence.defaultDays(t, base())
+                        }
                     }, { Text(label) })
                 }
             }
@@ -105,6 +121,17 @@ fun RecurrenceEditor(state: TaskFormState, onEnable: () -> Unit) {
                     }
                     Recurrence.MONTHLY -> FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         (1..31).forEach { d -> FilterChip(d in selected, { toggle(d) }, { Text("$d.") }) }
+                    }
+                    Recurrence.INTERVAL -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Vsakih ")
+                        OutlinedTextField(
+                            value = state.recurrenceDays,
+                            onValueChange = { v -> state.recurrenceDays = v.filter { it.isDigit() }.take(4) },
+                            modifier = Modifier.width(90.dp),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        )
+                        Text(" dni")
                     }
                     else -> FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         selected.forEach { md ->
@@ -120,7 +147,8 @@ fun RecurrenceEditor(state: TaskFormState, onEnable: () -> Unit) {
                 }
             }
             val desc = Recurrence.describe(state.recurrenceType, state.recurrenceDays)
-            Text(if (desc.isEmpty()) "Izberi vsaj en dan." else "Ponavlja se $desc. Ko task opraviš, se ustvari naslednji.",
+            Text(if (desc.isEmpty()) (if (state.recurrenceType == Recurrence.INTERVAL)
+                    "Vpiši število dni (1–${Recurrence.MAX_INTERVAL})." else "Izberi vsaj en dan.") else "Ponavlja se $desc. Ko ga opraviš, ostane na seznamu z rokom naslednje ponovitve.",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (desc.isEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -128,32 +156,35 @@ fun RecurrenceEditor(state: TaskFormState, onEnable: () -> Unit) {
 }
 
 /**
- * Izbira opomnika (Brez, Ob roku, 5 min … 1 teden prej). Ob prvi izbiri na Android 13+
- * zaprosi za dovoljenje za obvestila.
+ * Izbira opomnika s klikom: Brez · Ob roku · 10 min · 30 min · 45 min · 1 h prej.
+ * Privzeto je "Brez" – opomnik (budilka) se doda samo, če ga izbereš.
+ * Opomnik je mogoč samo pri tasku z uro. Ob prvi izbiri na Android 13+ zaprosi za dovoljenje za obvestila.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReminderPicker(state: TaskFormState) {
     val context = LocalContext.current
-    var open by remember { mutableStateOf(false) }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     fun choose(minutes: Int?) {
         state.reminderMinutes = minutes
-        open = false
         if (minutes != null && Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-    Box {
-        OutlinedButton(onClick = { open = true }) {
-            Icon(Icons.Outlined.Alarm, null); Spacer(Modifier.width(6.dp))
-            Text(ReminderScheduler.label(state.reminderMinutes))
-        }
-        DropdownMenu(open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text("Brez opomnika") }, onClick = { choose(null) })
-            ReminderScheduler.OPTIONS.forEach { (m, label) ->
-                DropdownMenuItem(text = { Text(label) }, onClick = { choose(m) })
-            }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.Alarm, null); Spacer(Modifier.width(6.dp))
+        Text("Opomnik (budilka)", style = MaterialTheme.typography.labelLarge)
+    }
+    if (!state.dueHasTime) {
+        Text("Za opomnik izberi še uro.", style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        return
+    }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FilterChip(state.reminderMinutes == null, { choose(null) }, { Text("Brez") })
+        ReminderScheduler.OPTIONS.forEach { (m, _) ->
+            FilterChip(state.reminderMinutes == m, { choose(m) }, { Text(ReminderScheduler.shortLabel(m)) })
         }
     }
 }

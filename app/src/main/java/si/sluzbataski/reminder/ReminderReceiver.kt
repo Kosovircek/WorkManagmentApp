@@ -28,14 +28,24 @@ import si.sluzbataski.widget.taskDetailIntent
 /**
  * Sprejemnik alarmov in gumbov v obvestilu opomnika.
  *
- *  - [ACTION_FIRE]   alarm se je sprožil → obvestilo + močno vibriranje (kot budilka)
+ *  - [ACTION_FIRE]   alarm se je sprožil → budilka ([AlarmService]: zvonjenje + celozaslonsko okno,
+ *                    dokler ne potrdiš). Če je budilka v nastavitvah izklopljena ali je Android ne
+ *                    dovoli zagnati, pokaže navadno obvestilo z vibriranjem.
+ *  - [ACTION_ACK]    gumb "Sprejeto" → budilka utihne, task ostane odprt
  *  - [ACTION_DONE]   gumb "Opravljeno" → task je opravljen
  *  - [ACTION_SNOOZE] gumb "Odloži 10 min" → nov alarm čez 10 minut
  */
 class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        val taskId = intent.getLongExtra(EXTRA_TASK_ID, -1L)
+        val taskId = intent.getLongExtra(EXTRA_TASK_ID, Long.MIN_VALUE)
+        if (taskId == Long.MIN_VALUE) return
+        // Gumbi budilke (delujejo tudi za preizkusno budilko z negativnim ID-jem)
+        when (intent.action) {
+            ACTION_ACK -> { AlarmService.acknowledge(context, taskId); return }
+            ACTION_DONE -> AlarmService.silence(taskId)
+            ACTION_SNOOZE -> AlarmService.silence(taskId)
+        }
         if (taskId < 0) return
         val pending = goAsync() // delo v ozadju (baza) – sprejemnik ostane živ do finish()
         CoroutineScope(Dispatchers.IO).launch {
@@ -45,9 +55,13 @@ class ReminderReceiver : BroadcastReceiver() {
                     ACTION_FIRE -> {
                         val task = graph.tasks.get(taskId)
                         if (task != null && task.isOpen) {
-                            notify(context, task.id, task.description,
-                                task.dueAt?.let { "Rok: " + Format.due(it, task.dueHasTime) } ?: "")
-                            vibrate(context)
+                            val text = task.dueAt?.let { "Rok: " + Format.due(it, task.dueHasTime) } ?: ""
+                            val asAlarm = graph.settings.alarmStyleReminders &&
+                                AlarmService.start(context, task.id, task.description, text)
+                            if (!asAlarm) {
+                                notify(context, task.id, task.description, text)
+                                vibrate(context)
+                            }
                             graph.db.taskEventDao().insert(TaskEvent(taskId = task.id, workplaceId = task.workplaceId,
                                 type = TaskEventType.REMINDER, detail = ReminderScheduler.label(task.reminderMinutes)))
                         }
@@ -102,15 +116,17 @@ class ReminderReceiver : BroadcastReceiver() {
     private fun cancelNotification(context: Context, taskId: Long) =
         context.getSystemService(NotificationManager::class.java).cancel(taskId.toInt())
 
-    private fun action(context: Context, action: String, taskId: Long): PendingIntent =
-        PendingIntent.getBroadcast(context, taskId.toInt(),
-            Intent(context, ReminderReceiver::class.java).setAction(action)
-                .setData(Uri.parse("sluzbataski://reminder/$action/$taskId"))
-                .putExtra(EXTRA_TASK_ID, taskId),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-
     companion object {
+        /** PendingIntent za gumb v obvestilu (Sprejeto / Opravljeno / Odloži). */
+        fun action(context: Context, action: String, taskId: Long): PendingIntent =
+            PendingIntent.getBroadcast(context, taskId.toInt(),
+                Intent(context, ReminderReceiver::class.java).setAction(action)
+                    .setData(Uri.parse("sluzbataski://reminder/$action/$taskId"))
+                    .putExtra(EXTRA_TASK_ID, taskId),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
         const val ACTION_FIRE = "si.sluzbataski.REMINDER_FIRE"
+        const val ACTION_ACK = "si.sluzbataski.REMINDER_ACK"
         const val ACTION_DONE = "si.sluzbataski.REMINDER_DONE"
         const val ACTION_SNOOZE = "si.sluzbataski.REMINDER_SNOOZE"
         const val EXTRA_TASK_ID = "taskId"

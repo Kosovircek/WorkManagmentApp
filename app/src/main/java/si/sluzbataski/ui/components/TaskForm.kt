@@ -79,6 +79,7 @@ class TaskFormState(
     val originalPhotoPath: String? = null,
     recurrenceType: String? = null,
     recurrenceDays: String = "",
+    /** Privzeto brez opomnika – uporabnik ga izbere sam. */
     reminderMinutes: Int? = null,
 ) {
     var description by mutableStateOf(description)
@@ -94,8 +95,11 @@ class TaskFormState(
     /** Minute pred rokom za opomnik ali null. */
     var reminderMinutes by mutableStateOf(reminderMinutes)
 
+    /** Opomnik, ki se shrani: samo pri tasku z datumom IN uro (brez ure ni samodejnega opomnika). */
+    val effectiveReminder: Int? get() = if (urgency == Urgency.DATUM && dueHasTime) reminderMinutes else null
+
     /** Ali je ponavljanje vklopljeno in ima izbran vsaj en dan. */
-    val hasRecurrence: Boolean get() = recurrenceType != null && Recurrence.parse(recurrenceDays).isNotEmpty()
+    val hasRecurrence: Boolean get() = Recurrence.isValid(recurrenceType, recurrenceDays)
 
     /**
      * Obrazec je veljaven, ko je opis vpisan in ima "Datum" izbran datum
@@ -121,7 +125,7 @@ class TaskFormState(
         client = client, photoPath = photoPath,
         recurrenceType = if (hasRecurrence) recurrenceType else null,
         recurrenceDays = if (hasRecurrence) recurrenceDays else null,
-        reminderMinutes = reminderMinutes,
+        reminderMinutes = effectiveReminder,
     )
 
     companion object {
